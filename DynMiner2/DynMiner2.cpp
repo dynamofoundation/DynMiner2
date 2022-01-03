@@ -17,6 +17,9 @@
 #include <CL/cl_platform.h>
 
 #ifdef __linux__
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h> 
 #include "json.hpp"
 #include "curl/curl.h"
 #endif
@@ -277,7 +280,7 @@ void connectToStratum() {
 
 void authorizeStratum() {
     char buf[4096];
-    sprintf_s(buf, "{\"params\": [\"%s\", \"%s\"], \"id\": \"auth\", \"method\": \"mining.authorize\"}", rpcConfigParams.user.c_str(), rpcConfigParams.pass.c_str());
+    sprintf(buf, "{\"params\": [\"%s\", \"%s\"], \"id\": \"auth\", \"method\": \"mining.authorize\"}", rpcConfigParams.user.c_str(), rpcConfigParams.pass.c_str());
     int numSent = send(stratumSocket, buf, strlen(buf), 0);
     if (numSent < 0)
         printf("Error on authentication\n");        //todo - I'm not sure this is 100% true

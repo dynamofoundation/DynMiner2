@@ -169,7 +169,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
     if (minerMode == "stratum") {
         char buf[4096];
         unsigned int* pNonce = &nonce;
-        sprintf_s(buf, "{\"params\": [\"%s\", \"%s\", \"\", \"%s\", \"%s\"], \"id\": \"%d\", \"method\": \"mining.submit\"}",
+        sprintf(buf, "{\"params\": [\"%s\", \"%s\", \"\", \"%s\", \"%s\"], \"id\": \"%d\", \"method\": \"mining.submit\"}",
             rpcUser.c_str(), getWork->jobID.c_str(), getWork->timeHex.c_str(), makeHex((unsigned char*)pNonce, 4).c_str(), rpcSequence);
 
         //printf("%s\n", buf);
