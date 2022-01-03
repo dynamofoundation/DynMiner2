@@ -321,7 +321,8 @@ int main(int argc, char* argv[])
             authorizeStratum();
         }
         */
-        Sleep(1000);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        //Sleep(1000);
     }
 
 }
