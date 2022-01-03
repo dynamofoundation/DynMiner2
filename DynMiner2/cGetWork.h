@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <thread>
 #include <iterator>
 #include "hex.h"
 #include "common.h"
