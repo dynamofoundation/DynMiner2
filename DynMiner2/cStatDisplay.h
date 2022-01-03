@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <atomic>
 #include <string>
+#include <thread>
 
 class cSubmitter;
 
