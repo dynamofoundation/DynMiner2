@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <windows.h>
 #include <cstdint>
 #include <atomic>
 #include <string>
@@ -10,7 +11,6 @@ class cSubmitter;
 using namespace std;
 
 #ifdef _WIN32
-#include <windows.h>
 #define SET_COLOR(color) SetConsoleTextAttribute(hConsole, color);
 #include "Windows.h"
 #else

@@ -125,7 +125,7 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 							const int code = error[0];
 							const std::string& message = error[1];
 							statDisplay->rejected_share_count++;
-							printf("Error (%s): %s (code: %d)\n", resp.c_str(), message.c_str(), code);
+							///////printf("Error (%s): %s (code: %d)\n", resp.c_str(), message.c_str(), code);
 							////////////miner.shares.stats.rejected_share_count++;
 						}
 						else {

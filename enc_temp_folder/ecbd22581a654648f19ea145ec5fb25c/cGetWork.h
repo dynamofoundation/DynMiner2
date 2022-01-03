@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <windows.h>
 #include <string>
 #include <vector>
 #include "json.hpp"
@@ -17,7 +18,6 @@
 #endif
 
 #ifdef _WIN32
-#include <windows.h>
 #include <curl\curl.h>
 #endif
 

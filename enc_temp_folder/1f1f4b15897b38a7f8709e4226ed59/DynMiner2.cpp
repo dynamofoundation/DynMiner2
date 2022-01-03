@@ -310,19 +310,9 @@ int main(int argc, char* argv[])
     startSubmitter();
     startMiners();
 
-    while (true) {
-        //todo - need to think about how to do this - reset getwork buffer, etc
-        /*
-        int error = 0;
-        size_t len = sizeof(error);
-        int retval = getsockopt(stratumSocket, SOL_SOCKET, SO_ERROR, (char*)&error, (char*)&len);
-        if (retval != 0) {
-            connectToStratum();
-            authorizeStratum();
-        }
-        */
+    while (true)
         Sleep(1000);
-    }
+    //todo - check if socket error on stratum and retry
 
 }
 

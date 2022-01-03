@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <mutex>
+#include <windows.h>
 #include "json.hpp"
 #include "difficulty.h"
 #include "struct.h"
@@ -11,7 +12,6 @@
 #endif
 
 #ifdef _WIN32
-#include <windows.h>
 #include <curl\curl.h>
 #endif
 
