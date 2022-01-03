@@ -44,7 +44,7 @@ void cStatDisplay::displayStats(cSubmitter *submitter) {
 
 	while (true)
 	{
-		Sleep(5000);
+        std::this_thread::sleep_for(std::chrono::seconds(5));
 
         uint64_t nonce = nonce_count;
 

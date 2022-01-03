@@ -66,7 +66,7 @@ void cGetWork::startPoolGetWork( cStatDisplay* statDisplay) {
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
         setJobDetailsPool(jResult);
 
-        Sleep(100000000000);
+        //Sleep(100000000000);
 
 	}
 
@@ -139,7 +139,7 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 			}
 		}
 
-		Sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
 	}
 }

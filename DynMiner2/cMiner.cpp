@@ -80,7 +80,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
         getWork->lockJob.lock();
         workReady = (getWork->workID != 0);
         getWork->lockJob.unlock();
-        Sleep(10);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     cl_int returnVal; 

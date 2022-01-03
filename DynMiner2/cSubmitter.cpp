@@ -9,7 +9,7 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
     minerMode = mode;
 
     while (getWork->workID == 0)
-        Sleep(10);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     thread submitThread(&cSubmitter::submitNonceThread, this, getWork);
     submitThread.detach();
@@ -72,7 +72,8 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
 		}
         else {
             hashListLock.unlock();
-            Sleep(10);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
         }
 		
 	}
@@ -157,7 +158,8 @@ void cSubmitter::submitNonceThread(cGetWork* getWork) {
         }
         else {
             nonceListLock.unlock();
-            Sleep(10);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
         }
     }
 
