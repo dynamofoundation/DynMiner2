@@ -33,11 +33,11 @@ void cGetWork::getWork(string mode, int stratumSocket, cStatDisplay* statDisplay
 
 	if (mode == "stratum")
 		startStratumGetWork(stratumSocket, statDisplay);
-	else if (mode == "pool")
-		startPoolGetWork(statDisplay);
+	else if (mode == "solo")
+		startSoloGetWork(statDisplay);
 }
 
-void cGetWork::startPoolGetWork( cStatDisplay* statDisplay) {
+void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 
 	json jResult;
 
@@ -49,17 +49,25 @@ void cGetWork::startPoolGetWork( cStatDisplay* statDisplay) {
     transactionString = NULL;
 
 	while (true) {
-		jResult = execRPC("{ \"id\": 0, \"method\" : \"getpooldata\", \"params\" : [] }");
-		string strWallet = jResult["walletAddr"];
-		uint32_t serverNonce = jResult["nonce"];
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"gethashfunction\", \"params\" : [] }");
 		strProgram = jResult["result"][0]["program"];
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
-        setJobDetailsPool(jResult);
+        setJobDetailsSolo(jResult);
+        statDisplay->blockHeight = jResult["result"]["height"];
 
-        //Sleep(100000000000);
+        reqNewBlockFlag = false;
+        bool newBlock = false;
+        while ((!newBlock) && (!reqNewBlockFlag)) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
+            if (jResult["result"]["height"] != chainHeight) {
+                newBlock = true;
+                //printf("Requesting new block");
+            }
+        }
+
 
 	}
 
@@ -260,12 +268,12 @@ size_t cGetWork::WriteMemoryCallback(void* contents, size_t size, size_t nmemb, 
 
 
 
-void cGetWork::setJobDetailsPool(json result) {
+void cGetWork::setJobDetailsSolo(json result) {
 
 
     lockJob.lock();
 
-    uint32_t height = result["result"]["height"];
+    chainHeight = result["result"]["height"];
     uint32_t version = result["result"]["version"];
     string prevBlockHash = result["result"]["previousblockhash"];
     int64_t coinbaseVal = result["result"]["coinbasevalue"];
@@ -274,7 +282,8 @@ void cGetWork::setJobDetailsPool(json result) {
     json jtransactions = result["result"]["transactions"];
     string strNativeTarget = result["result"]["target"];
 
-    jobID = to_string(height);
+    jobID = to_string(chainHeight);
+
 
     int tx_size = 0;
     for (int i = 0; i < jtransactions.size(); i++) {
@@ -309,7 +318,7 @@ void cGetWork::setJobDetailsPool(json result) {
     le32enc((uint32_t*)(cbtx + 37), 0xffffffff);    //prev txn index out
     int cbtx_size = 43;
 
-    for (int n = height; n; n >>= 8) {
+    for (int n = chainHeight; n; n >>= 8) {
         cbtx[cbtx_size++] = n & 0xff;
         if (n < 0x100 && n >= 0x80)
             cbtx[cbtx_size++] = 0;

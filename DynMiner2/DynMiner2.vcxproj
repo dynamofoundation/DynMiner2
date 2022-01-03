@@ -141,7 +141,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="cBlockMonitor.cpp" />
     <ClCompile Include="cGetWork.cpp" />
     <ClCompile Include="cMiner.cpp" />
     <ClCompile Include="cProgramVM.cpp" />
@@ -151,7 +150,6 @@
     <ClCompile Include="sha256.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cBlockMonitor.h" />
     <ClInclude Include="cGetWork.h" />
     <ClInclude Include="cMiner.h" />
     <ClInclude Include="cProgramVM.h" />

@@ -22,7 +22,7 @@ class cStatDisplay
 {
 
 public:
-	void displayStats(cSubmitter* submitter);
+	void displayStats(cSubmitter* submitter, string mode);
     string seconds_to_uptime(int n);
 
     atomic<uint64_t> nonce_count{};
@@ -30,6 +30,7 @@ public:
     atomic<uint32_t> accepted_share_count{};
     atomic<uint32_t> rejected_share_count{};
     atomic<uint32_t> latest_diff{};
+    uint32_t blockHeight;
     
     const double tb = 1099511627776;
     const double gb = 1073741824;

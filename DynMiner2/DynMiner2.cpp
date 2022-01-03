@@ -3,12 +3,12 @@
 
 
 
-//-mode pool -server http://pool3.dynamocoin.org:6434/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,1
+//-mode solo -server http://192.168.1.193:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
+//-mode solo -server http://52.73.55.126:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
 //-mode stratum -server web.letshash.it -port 5966 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1
 //-mode stratum -server pond.nethervoid.net -port 4234 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1
 
 #include <iostream>
-#include "cBlockMonitor.h"
 #include "cStatDisplay.h"
 #include "cGetWork.h"
 #include "cMiner.h"
@@ -36,11 +36,10 @@
 
 using namespace std;
 
-string minerMode;       //solo, pool or stratum
+string minerMode;       //solo or stratum
 int stratumSocket;      //tcp connected socket for stratum mode
 
 multimap<string, string> commandArgs;
-cBlockMonitor* blockMonitor;
 cStatDisplay* statDisplay;
 cGetWork* getWork;
 cSubmitter* submitter;
@@ -103,13 +102,13 @@ void showUsage(const char* message) {
 
     printf("USAGE\n");
     printf("dynminer2 \n");
-    printf("  -mode [solo|pool|stratum]\n");
-    printf("  -server <rpc server name or IP>\n");
+    printf("  -mode [solo|stratum]\n");
+    printf("  -server <rpc server URL or stratum IP>\n");
     printf("  -port <rpc port>  [only used for stratum]\n");
     printf("  -user <username>\n");
     printf("  -pass <password>\n");
     printf("  -diff <initial difficulty>  [optional]\n");
-    printf("  -wallet <wallet address>   [only used for solo and pool]\n");
+    printf("  -wallet <wallet address>   [only used for solo]\n");
     printf("  -miner <miner params>\n");
     printf("\n");
     printf("<miner params> format:\n");
@@ -142,7 +141,7 @@ void parseCommandArgs(int argc, char* argv[]) {
         multimap<string, string>::iterator it = commandArgs.find("-mode");
         string mode = it->second;
         transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-        set<string> modeTypes = { "solo", "pool", "stratum" };
+        set<string> modeTypes = { "solo", "stratum" };
         if (modeTypes.find(mode) == modeTypes.end())
             showUsage("Invalid MODE argument");
         minerMode = mode;
@@ -185,10 +184,6 @@ void parseCommandArgs(int argc, char* argv[]) {
 
 }
 
-void startBlockMonitor() {
-    thread monitorThread(&cBlockMonitor::runMonitor, blockMonitor);
-    monitorThread.detach();
-}
 
 void startSubmitter() {
     thread submitThread(&cSubmitter::submitEvalThread, submitter, getWork, statDisplay, minerMode);
@@ -202,7 +197,7 @@ void startSubmitter() {
 
 void startStatDisplay() {
  
-    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter);
+    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter, minerMode);
     statThread.detach();
 }
 
@@ -303,13 +298,11 @@ int main(int argc, char* argv[])
 
     statDisplay = new cStatDisplay();
     getWork = new cGetWork();
-    blockMonitor = new cBlockMonitor();
     submitter = new cSubmitter();
 
 
     startStatDisplay();
     startGetWork();
-    startBlockMonitor();
     startSubmitter();
     startMiners();
 

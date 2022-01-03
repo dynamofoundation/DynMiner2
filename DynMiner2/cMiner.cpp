@@ -217,6 +217,11 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 
     cl_program program;
 
+    if (_strnicmp("#define VERSION 2.00", kernelSource, 20) != 0) {
+        printf("Incorrect OpenCL program file.\n");
+        exit(0);
+    }
+
     // Create kernel program
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
     returnVal = clBuildProgram(program, 1, deviceID, NULL, NULL, NULL);

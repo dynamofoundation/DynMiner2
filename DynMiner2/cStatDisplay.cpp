@@ -31,7 +31,7 @@ string cStatDisplay::seconds_to_uptime(int n) {
     return (uptimeString);
 }
 
-void cStatDisplay::displayStats(cSubmitter *submitter) {
+void cStatDisplay::displayStats(cSubmitter *submitter, string mode) {
 
     time_t now;
     time_t start;
@@ -99,11 +99,20 @@ void cStatDisplay::displayStats(cSubmitter *submitter) {
         SET_COLOR(LIGHTGRAY);
         printf(" | ");
         SET_COLOR(LIGHTGREEN);
-        printf("N:%-8lu", nonce);
+        printf("N:%-12lu", nonce);
         SET_COLOR(LIGHTGRAY);
         printf(" | ");
         SET_COLOR(LIGHTGREEN);
         printf(" HQ:%-4d", submitter->hashList.size());
+
+        if (mode == "solo") {
+            SET_COLOR(LIGHTGRAY);
+            printf(" | ");
+            printf("Height: %-9d", blockHeight);
+            SET_COLOR(LIGHTGRAY);
+            printf(" | ");
+        }
+
         SET_COLOR(LIGHTMAGENTA);
         printf("DynMiner 2.0\n");
         SET_COLOR(LIGHTGRAY);

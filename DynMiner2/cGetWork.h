@@ -47,9 +47,9 @@ public:
 	cGetWork();
 	void getWork(string mode, int stratumSocket, cStatDisplay *statDisplay);
 	void setJobDetailsStratum(json msg);
-	void setJobDetailsPool(json msg);
+	void setJobDetailsSolo(json msg);
 	void startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay);
-	void startPoolGetWork(cStatDisplay* statDisplay);
+	void startSoloGetWork(cStatDisplay* statDisplay);
 	json execRPC(string data);
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
@@ -58,6 +58,7 @@ public:
 	mutex lockJob;
 
 	string jobID;
+	uint32_t chainHeight;
 	string prevBlockHashHex;
 	unsigned char prevBlockHashBin[32];
 	unsigned char merkleRoot[32];
@@ -89,6 +90,8 @@ public:
 	//used by all miners
 	mutex nonceLock;
 	uint32_t masterNonce;
+
+	bool reqNewBlockFlag;		//for solo mining - to get new block on either block height change or submission of good block
 
 };
 

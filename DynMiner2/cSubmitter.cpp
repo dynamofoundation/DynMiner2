@@ -34,7 +34,6 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
                     hash_int = htobe64(hash_int);
                     if (hash_int < target) {
                         nonceListLock.lock();
-                        //unsigned int nonce = hashResult->startNonce + k / 32;
                         uint32_t nonce = hashResult->nonceIndex[k];
                         cNonceEntry* entry = new cNonceEntry();
                         entry->nonce = nonce;
@@ -44,15 +43,14 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
                     }
                 }
             }
-            else if (mode == "pool") {
-                /*
-                unsigned int target = countLeadingZeros((unsigned char*)(getWork->iNativeTarget));      //pool is 256 times easier than chain
+            else if (mode == "solo") {
+                unsigned int target = countLeadingZeros((unsigned char*)(getWork->iNativeTarget));
                 unsigned char* ptr = hashResult->buffer;
-                for (uint32_t k = 0; k < hashResult->size / 32; k++) {
+                for (uint32_t k = 0; k < hashResult->hashCount; k++) {
                     unsigned int numZeros = countLeadingZeros(ptr);
                     if (numZeros >= target) {
                         nonceListLock.lock();
-                        unsigned int nonce = hashResult->startNonce + k;
+                        uint32_t nonce = hashResult->nonceIndex[k];
                         cNonceEntry* entry = new cNonceEntry();
                         entry->nonce = nonce;
                         entry->jobID = hashResult->jobID;
@@ -61,7 +59,6 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
                     }
                     ptr += 32;
                 }
-                */
 
             }
 
@@ -184,7 +181,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         statDisplay->share_count++;
     }
-    else if (minerMode == "pool") {
+    else if (minerMode == "solo") {
         getWork->lockJob.lock();
 
         unsigned char header[80];
@@ -207,16 +204,16 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         getWork->lockJob.unlock();
 
-        json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\",\"" + rpcWallet + "\"] }");
+        json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\"] }");
 
         if (jResult["error"].is_null()) {
-            //SetConsoleTextAttribute(hConsole, LIGHTCYAN);
-            printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
-            //SetConsoleTextAttribute(hConsole, LIGHTGRAY);
-            //validateSubmission(dynProgram, dynProgram->height);
+            //printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
+            getWork->reqNewBlockFlag = true;
+            statDisplay->share_count++;
         }
         else {
-            printf("Submit block failed: %s.\n", jResult["error"]);
+            //printf("Submit block failed: %s.\n", jResult["error"]);
+            statDisplay->rejected_share_count++;
         }
 
     }
