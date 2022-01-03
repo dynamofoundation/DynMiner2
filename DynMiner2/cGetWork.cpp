@@ -8,26 +8,19 @@ cGetWork::cGetWork() {
 }
 
 
-bool readLine(char* buffer, char* line, int* head, int* tail) {
+bool readLine(vector<char>& buffer, string& line) {
 
 	bool found = false;
-	int i = *tail;
-	int j = 0;
-	char temp[2048];
-	while ((!found) && (i != *head)) {
-		line[j] = buffer[i];
-		j++;
+    int i = 0;
+	while ((!found) && (i != buffer.size())) 
 		if (buffer[i] == '\n')
 			found = true;
-		else {
+		else 
 			i++;
-			if (i == STRATUM_BUFFER_SIZE)
-				i = 0;
-		}
-	}
+
 	if (found) {
-		line[j - 1] = 0;
-		*tail = i + 1;
+        line = string(buffer.data(), i );
+        buffer.erase(buffer.begin(), buffer.begin() + i + 1);
 	}
 
 	return found;
@@ -74,27 +67,21 @@ void cGetWork::startPoolGetWork( cStatDisplay* statDisplay) {
 
 
 void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay) {
-	char* buffer = (char*)malloc(STRATUM_BUFFER_SIZE);
-	int head = 0, tail = 0;
+    std::vector<char> buffer;
 
 	while (true) {
 		const int tmpBuffLen = 4096;
 		char tmpBuff[tmpBuffLen];
 		memset(tmpBuff, 0, tmpBuffLen);
 		int numRecv = recv(stratumSocket, tmpBuff, tmpBuffLen, 0);
-		if (numRecv > 0) {
-			for (int i = 0; i < numRecv; i++) {			//todo can optimize with memcpy and calc delta - no big deal really
-				buffer[head] = tmpBuff[i];
-				head++;
-				if (head == STRATUM_BUFFER_SIZE)
-					head = 0;
-			}
-		}
+        if (numRecv > 0)
+            for (int i = 0; i < numRecv; i++)
+                buffer.push_back(tmpBuff[i]);
 
-		if (head != tail) {
-			char line[2048];
-			while (readLine(buffer, line, &head, &tail)) {
-				json msg = json::parse(line);
+        if (buffer.size() > 0) {
+            string line;
+			while (readLine(buffer, line)) {
+				json msg = json::parse(line.c_str());
 				const json& id = msg["id"];
 				if (id.is_null()) {
 					const std::string& method = msg["method"];
@@ -104,6 +91,8 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 					else if (method == "mining.set_difficulty") {
 						const std::vector<uint32_t>& params = msg["params"];
 						difficultyTarget = params[0];
+                        if (difficultyTarget < 200)
+                            difficultyTarget = 200;
 						statDisplay->latest_diff.store(difficultyTarget);
 					}
 					else {
