@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <iterator>
 #include "hex.h"
 #include "common.h"
 #include "sha256.h"
@@ -51,7 +52,7 @@ public:
 	json execRPC(string data);
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
-	atomic<uint32_t> difficultyTarget = 0;
+	atomic<uint32_t> difficultyTarget{ 0 };
 	atomic<uint32_t> workID;
 	mutex lockJob;
 
