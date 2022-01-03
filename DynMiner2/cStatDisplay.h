@@ -6,6 +6,7 @@
 #include <atomic>
 #include <string>
 
+class cSubmitter;
 
 using namespace std;
 
@@ -20,7 +21,7 @@ class cStatDisplay
 {
 
 public:
-	void displayStats();
+	void displayStats(cSubmitter* submitter);
     string seconds_to_uptime(int n);
 
     atomic<uint64_t> nonce_count{};

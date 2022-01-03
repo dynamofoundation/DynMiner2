@@ -1,5 +1,5 @@
 #include "cStatDisplay.h"
-
+#include "cSubmitter.h"
 
 string cStatDisplay::seconds_to_uptime(int n) {
     int days = n / (24 * 3600);
@@ -31,7 +31,7 @@ string cStatDisplay::seconds_to_uptime(int n) {
     return (uptimeString);
 }
 
-void cStatDisplay::displayStats() {
+void cStatDisplay::displayStats(cSubmitter *submitter) {
 
     time_t now;
     time_t start;
@@ -102,6 +102,8 @@ void cStatDisplay::displayStats() {
         printf("N:%-8lu", nonce);
         SET_COLOR(LIGHTGRAY);
         printf(" | ");
+        SET_COLOR(LIGHTGREEN);
+        printf(" HQ:%-4d", submitter->hashList.size());
         SET_COLOR(LIGHTMAGENTA);
         printf("DynMiner 2.0\n");
         SET_COLOR(LIGHTGRAY);

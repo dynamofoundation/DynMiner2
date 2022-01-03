@@ -1,6 +1,12 @@
 // DynMiner2.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
+
+
+//-mode pool -server http://pool3.dynamocoin.org:6434/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,1
+//-mode stratum -server web.letshash.it -port 5966 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1
+//-mode stratum -server pond.nethervoid.net -port 4234 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1
+
 #include <iostream>
 #include "cBlockMonitor.h"
 #include "cStatDisplay.h"
@@ -99,6 +105,7 @@ void showUsage(const char* message) {
     printf("  -port <rpc port>  [only used for stratum]\n");
     printf("  -user <username>\n");
     printf("  -pass <password>\n");
+    printf("  -diff <initial difficulty>  [optional]\n");
     printf("  -wallet <wallet address>   [only used for solo and pool]\n");
     printf("  -miner <miner params>\n");
     printf("\n");
@@ -176,29 +183,36 @@ void parseCommandArgs(int argc, char* argv[]) {
 }
 
 void startBlockMonitor() {
-    blockMonitor = new cBlockMonitor();
     thread monitorThread(&cBlockMonitor::runMonitor, blockMonitor);
     monitorThread.detach();
 }
 
 void startSubmitter() {
-    submitter = new cSubmitter();
-    thread submitThread(&cSubmitter::submitEvalThread, submitter, getWork, statDisplay);
+    thread submitThread(&cSubmitter::submitEvalThread, submitter, getWork, statDisplay, minerMode);
     submitThread.detach();
-    submitter->user = rpcConfigParams.user;
     submitter->stratumSocket = stratumSocket;
+    submitter->rpcURL = rpcConfigParams.server;
+    submitter->rpcUser = rpcConfigParams.user;
+    submitter->rpcPassword = rpcConfigParams.pass;
+    submitter->rpcWallet = rpcConfigParams.wallet;
 }
 
 void startStatDisplay() {
-    statDisplay = new cStatDisplay();
-    thread statThread(&cStatDisplay::displayStats, statDisplay);
+ 
+    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter);
     statThread.detach();
 }
 
 void startGetWork() {
-    getWork = new cGetWork();
+    
     thread workThread(&cGetWork::getWork, getWork, minerMode, stratumSocket, statDisplay);
     workThread.detach();
+
+    getWork->rpcURL = rpcConfigParams.server;
+    getWork->rpcUser = rpcConfigParams.user;
+    getWork->rpcPassword = rpcConfigParams.pass;
+    getWork->rpcWallet = rpcConfigParams.wallet;
+
 }
 
 
@@ -283,6 +297,12 @@ int main(int argc, char* argv[])
         connectToStratum();
         authorizeStratum();
     }
+
+    statDisplay = new cStatDisplay();
+    getWork = new cGetWork();
+    blockMonitor = new cBlockMonitor();
+    submitter = new cSubmitter();
+
 
     startStatDisplay();
     startGetWork();

@@ -157,9 +157,10 @@
     <ClInclude Include="cProgramVM.h" />
     <ClInclude Include="cStatDisplay.h" />
     <ClInclude Include="cSubmitter.h" />
+    <ClInclude Include="struct.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="dyn_miner.cl" />
+    <None Include="dyn_miner2.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -3,19 +3,34 @@
 #include <string>
 #include <mutex>
 #include <windows.h>
+#include "json.hpp"
 #include "difficulty.h"
-#include "cGetWork.h"
-#include "cStatDisplay.h"
+#include "struct.h"
+
+#ifdef __linux__
+#include "curl/curl.h"
+#endif
+
+#ifdef _WIN32
+#include <curl\curl.h>
+#endif
+
+class cGetWork;
+class cStatDisplay;
 
 using namespace std;
+using json = nlohmann::json;
+
 
 
 class cHashResult {
 public:
 	string jobID;
 	unsigned char* buffer;
-	unsigned int startNonce;
-	int size;
+	uint32_t* nonceIndex;
+	//unsigned int startNonce;
+	int hashCount;
+	int deviceID;
 };
 
 class cNonceEntry {
@@ -27,11 +42,13 @@ public:
 class cSubmitter
 {
 public:
-	void submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay);
+	void submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay, string mode);
 	void submitNonceThread(cGetWork* getWork);
 	void submitNonce(unsigned int nonce, cGetWork* getWork);
+	json execRPC(string data);
+	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
-	void addHashResults(unsigned char* hashBuffer, int buffSize, unsigned int startNonce, string jobID);
+	void addHashResults(unsigned char* hashBuffer, int hashCount, string jobID, int deviceID, uint32_t* nonceIndex);
 	unsigned int countLeadingZeros(unsigned char* hash);
 
 	mutex hashListLock;
@@ -43,9 +60,17 @@ public:
 	int stratumSocket;
 	int rpcSequence;
 
-	string user;
-
 	cStatDisplay* statDisplay;
+
+	string minerMode;
+
+	CURL* curl;
+	CURLcode res;
+	struct MemoryStruct chunk;
+	string rpcURL;
+	string rpcUser;
+	string rpcPassword;
+	string rpcWallet;
 
 };
 

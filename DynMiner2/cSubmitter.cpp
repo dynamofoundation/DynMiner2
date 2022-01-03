@@ -1,8 +1,12 @@
 #include "cSubmitter.h"
+#include "cGetWork.h"
+#include "cStatDisplay.h"
 
-void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay) {
+
+void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay, string mode) {
 
     statDisplay = iStatDisplay;
+    minerMode = mode;
 
     while (getWork->workID == 0)
         Sleep(10);
@@ -14,38 +18,54 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay)
 
 	while (true) {
 
-        uint64_t target = share_to_target(getWork->difficultyTarget) * 65536;
-
 		hashListLock.lock();
 		if (!hashList.empty()) {
         	cHashResult *hashResult = hashList[0];
 			hashList.erase(hashList.begin());
 			hashListLock.unlock();
 
-			// find a hash with difficulty higher than share diff
-			for (uint32_t k = 0; k < hashResult->size; k += 32 ) {
-                
-                /*
-				int numZeros = countLeadingZeros(&pHashResult->buffer[k]);
-                if (numZeros > getWork->difficultyTarget + 8) {               //diff multiplier is 65536 = 16 leading zeros?
-                */
-                uint64_t hash_int{};
-                memcpy(&hash_int, &hashResult->buffer[k], 8);
-                hash_int = htobe64(hash_int);
-                if (hash_int < target) {                
-                    nonceListLock.lock();
-                    unsigned int nonce = hashResult->startNonce + k / 32;
-                    cNonceEntry *entry = new cNonceEntry();
-                    entry->nonce = nonce;
-                    entry->jobID = hashResult->jobID;
+            if (mode == "stratum") {
+                uint64_t target = share_to_target(getWork->difficultyTarget) * 65536;
 
-                    nonceList.push_back(entry);
-                    nonceListLock.unlock();
+                // find a hash with difficulty higher than share diff
+                for (uint32_t k = 0; k < hashResult->hashCount; k++) {
+                    uint64_t hash_int{};
+                    memcpy(&hash_int, &hashResult->buffer[k*32], 8);
+                    hash_int = htobe64(hash_int);
+                    if (hash_int < target) {
+                        nonceListLock.lock();
+                        //unsigned int nonce = hashResult->startNonce + k / 32;
+                        uint32_t nonce = hashResult->nonceIndex[k];
+                        cNonceEntry* entry = new cNonceEntry();
+                        entry->nonce = nonce;
+                        entry->jobID = hashResult->jobID;
+                        nonceList.push_back(entry);
+                        nonceListLock.unlock();
+                    }
                 }
+            }
+            else if (mode == "pool") {
+                /*
+                unsigned int target = countLeadingZeros((unsigned char*)(getWork->iNativeTarget));      //pool is 256 times easier than chain
+                unsigned char* ptr = hashResult->buffer;
+                for (uint32_t k = 0; k < hashResult->size / 32; k++) {
+                    unsigned int numZeros = countLeadingZeros(ptr);
+                    if (numZeros >= target) {
+                        nonceListLock.lock();
+                        unsigned int nonce = hashResult->startNonce + k;
+                        cNonceEntry* entry = new cNonceEntry();
+                        entry->nonce = nonce;
+                        entry->jobID = hashResult->jobID;
+                        nonceList.push_back(entry);
+                        nonceListLock.unlock();
+                    }
+                    ptr += 32;
+                }
+                */
 
-                
-			}
+            }
 
+            free(hashResult->nonceIndex);
             free(hashResult->buffer);
             delete hashResult;
 
@@ -62,14 +82,20 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay)
 
 
 
-void cSubmitter::addHashResults(unsigned char* hashBuffer, int buffSize, unsigned int startNonce, string jobID) {
+void cSubmitter::addHashResults(unsigned char* hashBuffer, int hashCount, string jobID, int deviceID, uint32_t* nonceIndex) {
 	hashListLock.lock();
     cHashResult* hashResult = new cHashResult();
-    hashResult->buffer = (unsigned char*)malloc(buffSize);
-    memcpy(hashResult->buffer, hashBuffer, buffSize);
-    hashResult->size = buffSize;
-    hashResult->startNonce = startNonce;
+
+    hashResult->buffer = (unsigned char*)malloc(hashCount * 32);
+    memcpy(hashResult->buffer, hashBuffer, hashCount * 32);
+
+    hashResult->nonceIndex = (uint32_t*)malloc(hashCount * 4);
+    memcpy(hashResult->nonceIndex, nonceIndex, hashCount * 4);
+
+    hashResult->hashCount = hashCount;
+    //hashResult->startNonce = startNonce;
     hashResult->jobID = jobID;
+    hashResult->deviceID = deviceID;
 	hashList.push_back(hashResult);
 	hashListLock.unlock();
 }
@@ -139,17 +165,103 @@ void cSubmitter::submitNonceThread(cGetWork* getWork) {
 
 
 void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
-    char buf[4096];
-    unsigned int* pNonce = &nonce;
-    sprintf_s(buf, "{\"params\": [\"%s\", \"%s\", \"\", \"%s\", \"%s\"], \"id\": \"%d\", \"method\": \"mining.submit\"}",
-        user.c_str(), getWork->jobID.c_str(), getWork->timeHex.c_str(),makeHex((unsigned char*)pNonce, 4).c_str(), rpcSequence);
 
-    int numSent = send(stratumSocket, buf, strlen(buf), 0);
-    if (numSent < 0)
-        printf("Socket error on submit block\n");
+    if (minerMode == "stratum") {
+        char buf[4096];
+        unsigned int* pNonce = &nonce;
+        sprintf_s(buf, "{\"params\": [\"%s\", \"%s\", \"\", \"%s\", \"%s\"], \"id\": \"%d\", \"method\": \"mining.submit\"}",
+            rpcUser.c_str(), getWork->jobID.c_str(), getWork->timeHex.c_str(), makeHex((unsigned char*)pNonce, 4).c_str(), rpcSequence);
 
-    rpcSequence++;
+        //printf("%s\n", buf);
 
-    statDisplay->share_count++;
+        int numSent = send(stratumSocket, buf, strlen(buf), 0);
+        if (numSent < 0)
+            printf("Socket error on submit block\n");
+
+        rpcSequence++;
+
+        statDisplay->share_count++;
+    }
+    else if (minerMode == "pool") {
+        getWork->lockJob.lock();
+
+        unsigned char header[80];
+        memcpy(header, getWork->nativeData, 80);
+
+        memcpy(header + 76, &nonce, 4);
+
+        for (int i = 0; i < 16; i++) {
+            unsigned char swap = header[4 + i];
+            header[4 + i] = header[35 - i];
+            header[35 - i] = swap;
+        }
+
+        std::string strBlock;
+
+        char hexHeader[256];
+        bin2hex(hexHeader, header, 80);
+        strBlock += std::string(hexHeader);
+        strBlock += getWork->transactionString;
+
+        getWork->lockJob.unlock();
+
+        json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\",\"" + rpcWallet + "\"] }");
+
+        if (jResult["error"].is_null()) {
+            //SetConsoleTextAttribute(hConsole, LIGHTCYAN);
+            printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
+            //SetConsoleTextAttribute(hConsole, LIGHTGRAY);
+            //validateSubmission(dynProgram, dynProgram->height);
+        }
+        else {
+            printf("Submit block failed: %s.\n", jResult["error"]);
+        }
+
+    }
     
+}
+
+
+json cSubmitter::execRPC(string data) {
+
+    chunk.size = 0;
+
+    curl = curl_easy_init();
+    curl_easy_setopt(curl, CURLOPT_URL, rpcURL.c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
+    curl_easy_setopt(curl, CURLOPT_USERNAME, rpcUser.c_str());
+    curl_easy_setopt(curl, CURLOPT_PASSWORD, rpcPassword.c_str());
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&chunk);
+
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK)
+        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+
+    json result = json::parse(chunk.memory);
+    return result;
+}
+
+size_t cSubmitter::WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp)
+{
+    size_t realsize = size * nmemb;
+    struct MemoryStruct* mem = (struct MemoryStruct*)userp;
+
+    char* ptr = (char*)realloc(mem->memory, mem->size + realsize + 1);
+    if (ptr == NULL) {
+        /* out of memory! */
+        printf("not enough memory (realloc returned NULL)\n");
+        return 0;
+    }
+
+    mem->memory = ptr;
+    memcpy(&(mem->memory[mem->size]), contents, realsize);
+    mem->size += realsize;
+    mem->memory[mem->size] = 0;
+
+    return realsize;
 }
