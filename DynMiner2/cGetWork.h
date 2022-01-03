@@ -7,6 +7,7 @@
 #include <mutex>
 #include <vector>
 #include <string>
+#include <atomic>
 #include "hex.h"
 #include "common.h"
 #include "sha256.h"
