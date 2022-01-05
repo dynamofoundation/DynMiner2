@@ -9,7 +9,7 @@
 
 using namespace std;
 
-enum eOpcode  {
+enum eOpcode {
     ADD = 0,
     XOR = 1,
     SHA_SINGLE = 2,
@@ -18,8 +18,19 @@ enum eOpcode  {
     MEMADD = 5,
     MEMXOR = 6,
     MEM_SELECT = 7,
-    END = 8
+    END = 8,
+    READMEM2 = 9,
+    LOOP = 10,
+    ENDLOOP = 11,
+    IF = 12,
+    STORETEMP = 13,
+    EXECOP = 14,
+    MEMADDHASHPREV = 15,
+    MEMXORHASHPREV = 16
+
 };
+
+
 
 
 class cProgramVM

@@ -16,6 +16,8 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
 
     rpcSequence = 0;
 
+    curl = curl_easy_init();
+
 	while (true) {
 
 		hashListLock.lock();
@@ -74,6 +76,9 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
         }
 		
 	}
+
+    //we will never get here, but anyway...
+    curl_easy_cleanup(curl);
 
 }
 
@@ -225,7 +230,6 @@ json cSubmitter::execRPC(string data) {
 
     chunk.size = 0;
 
-    curl = curl_easy_init();
     curl_easy_setopt(curl, CURLOPT_URL, rpcURL.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERNAME, rpcUser.c_str());
@@ -242,6 +246,9 @@ json cSubmitter::execRPC(string data) {
         fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
     json result = json::parse(chunk.memory);
+
+
+
     return result;
 }
 

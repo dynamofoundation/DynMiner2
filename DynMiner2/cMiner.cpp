@@ -135,7 +135,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
         unsigned int nonce;
         int workID;
 
-        uint32_t openCLprogramLoops = 200;
+        uint32_t openCLprogramLoops = 1;
 
         getWork->lockJob.lock();
 
@@ -217,7 +217,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 
     cl_program program;
 
-    if (_strnicmp("#define VERSION 2.00", kernelSource, 20) != 0) {
+    if (_strnicmp("#define VERSION 2.02", kernelSource, 20) != 0) {
         printf("Incorrect OpenCL program file.\n");
         exit(0);
     }

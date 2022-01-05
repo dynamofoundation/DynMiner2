@@ -29,6 +29,8 @@ bool readLine(vector<char>& buffer, string& line) {
 
 void cGetWork::getWork(string mode, int stratumSocket, cStatDisplay* statDisplay) {
 
+    curl = curl_easy_init();
+
 	programVM = new cProgramVM();
 
 	if (mode == "stratum")
@@ -41,7 +43,6 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 
 	json jResult;
 
-	curl_global_init(CURL_GLOBAL_ALL);
 
 	chunk.memory = (char*)malloc(1);
 	chunk.size = 0;
@@ -226,7 +227,7 @@ json cGetWork::execRPC(string data) {
 
 	chunk.size = 0;
 
-	curl = curl_easy_init();
+
 	curl_easy_setopt(curl, CURLOPT_URL, rpcURL.c_str());
 	curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
 	curl_easy_setopt(curl, CURLOPT_USERNAME, rpcUser.c_str());
@@ -243,6 +244,7 @@ json cGetWork::execRPC(string data) {
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
 	json result = json::parse(chunk.memory);
+
 	return result;
 }
 
