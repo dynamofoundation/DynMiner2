@@ -122,21 +122,21 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
 
     size_t programBufferSize = 8192;  //getWork->programVM->byteCode.size() * 4
     clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, programBufferSize, NULL, &returnVal);
-    checkReturn("clSetKernelArg", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
+    checkReturn("clSetKernelArg - program", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
 
     hashResultSize = computeUnits * 32;
     clGPUHashResultBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, hashResultSize, NULL, &returnVal);
-    returnVal = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clGPUHashResultBuffer);
+    checkReturn("clSetKernelArg - hash", clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clGPUHashResultBuffer));
     buffHashResult = (uint32_t*)malloc(hashResultSize);
 
     headerBuffSize = 80;
     clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, headerBuffSize, NULL, &returnVal);
-    returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer);
+    checkReturn("clSetKernelArg - header", returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer));
     buffHeader = (unsigned char*)malloc(headerBuffSize);
 
     nonceBuffSize = computeUnits * sizeof(uint32_t);
     clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, nonceBuffSize, NULL, &returnVal);
-    returnVal = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer);
+    checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
     while (true) {
