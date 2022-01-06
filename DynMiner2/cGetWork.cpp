@@ -57,6 +57,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
         strProgram = jResult["result"][0]["program"];
         int start_time = jResult["result"][0]["start_time"];
         printf("got program %d\n", start_time);
+        programStartTime = start_time;
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
         setJobDetailsSolo(jResult);
@@ -225,6 +226,11 @@ void cGetWork::setJobDetailsStratum(json msg) {
 
 	programVM->byteCode.clear();
 	programVM->generateBytecode(program, merkleRoot, prevBlockHashBin);
+
+    if (programVM->byteCode.size() == 77)
+        programStartTime = 1;
+    else
+        programStartTime = 2;
 
 	workID++;
 

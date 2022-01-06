@@ -108,6 +108,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     cl_mem clNonceBuffer;
     uint32_t* buffNonce;
 
+    cl_mem clProgStartTime;
+
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
 
@@ -139,19 +141,33 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
+    uint32_t progStartTime;
+    clProgStartTime = clCreateBuffer(context, CL_MEM_READ_WRITE, 4, NULL, &returnVal);
+    checkReturn("clSetKernelArg - progstarttime", clSetKernelArg(kernel, 4, sizeof(cl_mem), (void*)&clProgStartTime));
+
+
     while (true) {
         unsigned int nonce;
         int workID;
 
-        uint32_t openCLprogramLoops = 1;
 
         getWork->lockJob.lock();
+
+        progStartTime = getWork->programStartTime;
+
+        uint32_t openCLprogramLoops;
+        if (progStartTime == 1)
+            openCLprogramLoops = 200;
+        else
+            openCLprogramLoops = 1;
+
 
         workID = getWork->workID;
         string jobID = getWork->jobID;
         memcpy(buffHeader, getWork->nativeData, 80);
 
         checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4, getWork->programVM->byteCode.data(), 0, NULL, NULL));
+        checkReturn("clEnqueueWriteBuffer - progstart", clEnqueueWriteBuffer(commandQueue, clProgStartTime, CL_TRUE, 0, 4, &progStartTime, 0, NULL, NULL));
 
         getWork->lockJob.unlock();
 

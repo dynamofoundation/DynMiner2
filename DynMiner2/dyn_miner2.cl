@@ -1,4 +1,4 @@
-#define VERSION 2.03
+#define VERSION 2.04
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
@@ -375,27 +375,15 @@ __constant uint MemDataConsts[8] =
 
 
 
-
-#define printf //
-
-#define GPU_LOOPS 1
-
-__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* hostNonce) {
+__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* hostNonce, __global uint* programStartTime) {
     
-    //int computeUnitID = get_global_id(0) * 512 + get_global_id(1);
     int computeUnitID = get_global_id(0);
 
-    
-    /*
-    if (computeUnitID != 0)
-        return;
-      */  
-
-    /*
-    for (int i = 0; i < 77; i++)
-        printf("%u\n", byteCode[i]);
-    return;
-    */
+    uint GPU_LOOPS;
+    if (*programStartTime == 1)
+        GPU_LOOPS = 200;
+    else
+        GPU_LOOPS = 1;
 
     __global uint* hostHashResult = &hashResult[computeUnitID * 8];
 
@@ -419,9 +407,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     
     uint hashCount = 0;
     while (hashCount < GPU_LOOPS) {
-
-
-        if (byteCode[0] == 3) {
+        if (*programStartTime == 1) {
             sha256(80, myHeader, myHashResult);
 
             uint linePtr = 0;
@@ -559,19 +545,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
         else {
 
-            for (int i = 0; i < 20; i++)
-                printf("%08X", myHeader[i]);
-
-            /////////////////////////////////////////    TESTING
-            /*
-            for (int i = 0; i < 20; i++)
-                myHeader[i] = 0;
-            sha256(32, &myHeader[1], prevHashSHA);
-            */
-            /////////////////////////////////////////
-
-
-
             sha256(80, myHeader, myHashResult);
 
 
@@ -589,11 +562,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
             while (done == 0) {
 
-                printf("start %08X%08X%08X%08X%08X%08X%08X%08X", myHashResult[0], myHashResult[1], myHashResult[2], myHashResult[3], myHashResult[4], myHashResult[5], myHashResult[6], myHashResult[7]);
-
-
                 if (byteCode[linePtr] == HASHOP_ADD) {
-                    printf("HASHOP_ADD          ");
                     linePtr++;
                     for (int i = 0; i < 8; i++)
                         myHashResult[i] += byteCode[linePtr + i];
@@ -602,7 +571,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_XOR) {
-                    printf("HASHOP_XOR          ");
                     linePtr++;
                     for (int i = 0; i < 8; i++)
                         myHashResult[i] ^= byteCode[linePtr + i];
@@ -611,14 +579,12 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_SHA_SINGLE) {
-                    printf("HASHOP_SHA_SINGLE\n");
                     sha256(32, myHashResult, myHashResult);
                     linePtr++;
                 }
 
 
                 else if (byteCode[linePtr] == HASHOP_SHA_LOOP) {
-                    printf("HASHOP_SHA_LOOP     ");
                     linePtr++;
                     uint loopCount = byteCode[linePtr];
                     for (int i = 0; i < loopCount; i++) {
@@ -629,7 +595,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_MEMGEN) {
-                    printf("HASHOP_MEMGEN       ");
                     linePtr++;
 
                     currentMemSize = byteCode[linePtr];
@@ -646,8 +611,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_MEMADD) {
-                    printf("HASHOP_MEMADD       ");
-
                     linePtr++;
 
                     for (int i = 0; i < currentMemSize; i++)
@@ -658,8 +621,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_MEMADDHASHPREV) {
-                    printf("HASHOP_MEMADDHASHPREV ");
-
                     linePtr++;
 
                     for (int i = 0; i < currentMemSize; i++)
@@ -672,7 +633,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_MEMXOR) {
-                    printf("HASHOP_MEMXOR       ");
                     linePtr++;
 
                     for (int i = 0; i < currentMemSize; i++)
@@ -683,7 +643,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_MEMXORHASHPREV) {
-                    printf("HASHOP_MEMXORHASHPREV ");
                     linePtr++;
 
                     for (int i = 0; i < currentMemSize; i++)
@@ -696,7 +655,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
                 else if (byteCode[linePtr] == HASHOP_MEM_SELECT) {
-                    printf("HASHOP_MEM_SELECT   ");
                     linePtr++;
                     uint index = byteCode[linePtr] % currentMemSize;
                     for (int j = 0; j < 8; j++)
@@ -706,8 +664,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_READMEM2) {
-                    printf("HASHOP_READMEM2     ");
-
                     linePtr++;
                     if (byteCode[linePtr] == 0) {
                         for (int i = 0; i < 8; i++)
@@ -727,8 +683,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                     index = index % currentMemSize;
 
-                    printf("index %d", index);
-
                     for (int j = 0; j < 8; j++)
                         myHashResult[j] = myMemGen[index][j];
 
@@ -737,8 +691,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_LOOP) {
-                    printf("HASHOP_LOOP         ");
-
                     loop_opcode_count = 0;
                     for (int j = 0; j < 8; j++)
                         loop_opcode_count += myHashResult[j];
@@ -751,7 +703,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_ENDLOOP) {
-                    printf("HASHOP_ENDLOOP      ");
                     linePtr++;
                     loop_opcode_count--;
                     if (loop_opcode_count > 0)
@@ -759,8 +710,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_IF) {
-                    printf("HASHOP_IF           ");
-
                     linePtr++;
                     uint sum = 0;
                     for (int j = 0; j < 8; j++)
@@ -770,16 +719,11 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     uint numToSkip = byteCode[linePtr];
                     linePtr++;
                     if (sum == 0) {
-                        printf("TRUE");
                         linePtr += numToSkip;
                     }
-                    else
-                        printf("FALSE");
                 }
 
                 else if (byteCode[linePtr] == HASHOP_STORETEMP) {
-                    printf("HASHOP_STORETEMP    ");
-
                     for (int j = 0; j < 8; j++)
                         tempStore[j] = myHashResult[j];
 
@@ -787,8 +731,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 }
 
                 else if (byteCode[linePtr] == HASHOP_EXECOP) {
-                    printf("HASHOP_EXECOP       ");
-
                     linePtr++;
                     //next byte is source  (hard coded to temp)
                     linePtr++;
@@ -798,40 +740,31 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                         sum += myHashResult[j];
 
                     if (sum % 3 == 0) {
-                        printf("--ADD--\n");
                         for (int i = 0; i < 8; i++)
                             myHashResult[i] += tempStore[i];
                     }
 
                     else if (sum % 3 == 1) {
-                        printf("--XOR--\n");
                         for (int i = 0; i < 8; i++)
                             myHashResult[i] ^= tempStore[i];
                     }
 
                     else if (sum % 3 == 2) {
-                        printf("--SHA--\n");
                         sha256(32, myHashResult, myHashResult);
                     }
 
                 }
 
                 else if (byteCode[linePtr] == HASHOP_END) {
-                    //printf("HASHOP_END\n");
                     done = 1;
                 }
                 else {
-                    //printf("ERROR BAD OPCODE\n");
                     done = 1;
                 }
 
                 if (linePtr > 100) {
-                    //printf("ABORTING AFTER 100 LINES\n");
                     done = 1;
                 }
-
-                printf("end   %08X%08X%08X%08X%08X%08X%08X%08X", myHashResult[0], myHashResult[1], myHashResult[2], myHashResult[3], myHashResult[4], myHashResult[5], myHashResult[6], myHashResult[7]);
-
             }
 
         }
@@ -865,36 +798,14 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
         if (c >= bestDiff) {
-            /*
-                if (computeUnitID == 0) {
-                    printf ("current best %d, new best %d, new hash %08X%08X%08X%08X%08X%08X%08X%08X  nonce %d",
-                    bestDiff,
-                    c,
-                    test[0],
-                    test[1],
-                    test[2],
-                    test[3],
-                    test[4],
-                    test[5],
-                    test[6],
-                    test[7],
-                    nonce
-                    );
-                }
-                */
-
             bestDiff = c;
             bestNonce = nonce;
             for (int yy = 0; yy < 8; yy++)
                 bestHash[yy] = myHashResult[yy];
         }
-
         hashCount++;
-
         nonce++;
-
         myHeader[19] = nonce;
-		
 	}
 
     hostNonce[computeUnitID] = bestNonce;

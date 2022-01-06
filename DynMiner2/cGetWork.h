@@ -69,6 +69,7 @@ public:
 	string timeHex;
 	string nbits;
 	string strProgram;
+	uint32_t programStartTime;
 	unsigned char nativeData[80];
 	vector<string> program;
 	vector<uint32_t> byteCode;
