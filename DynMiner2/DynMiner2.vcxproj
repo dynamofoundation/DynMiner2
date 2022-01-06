@@ -156,6 +156,7 @@
     <ClInclude Include="cStatDisplay.h" />
     <ClInclude Include="cSubmitter.h" />
     <ClInclude Include="struct.h" />
+    <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dyn_miner2.cl" />

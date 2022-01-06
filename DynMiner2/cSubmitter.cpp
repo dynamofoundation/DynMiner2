@@ -194,11 +194,14 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         memcpy(header + 76, &nonce, 4);
 
+        
         for (int i = 0; i < 16; i++) {
             unsigned char swap = header[4 + i];
             header[4 + i] = header[35 - i];
             header[35 - i] = swap;
         }
+        
+        
 
         std::string strBlock;
 

@@ -6,6 +6,8 @@
 #include <string>
 #include <thread>
 
+#include "version.h"
+
 class cSubmitter;
 
 using namespace std;

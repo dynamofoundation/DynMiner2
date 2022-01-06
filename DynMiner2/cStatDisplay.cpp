@@ -114,7 +114,7 @@ void cStatDisplay::displayStats(cSubmitter *submitter, string mode) {
         }
 
         SET_COLOR(LIGHTMAGENTA);
-        printf("DynMiner 2.0\n");
+        printf("DynMiner %s\n", MINER_VERSION);
         SET_COLOR(LIGHTGRAY);
 
 

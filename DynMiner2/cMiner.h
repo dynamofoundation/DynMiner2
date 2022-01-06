@@ -5,6 +5,8 @@
 #include <CL/cl.h>
 #include <CL/cl_platform.h>
 
+#include "version.h"
+
 class cGetWork;
 class cSubmitter;
 class cStatDisplay;

@@ -34,7 +34,8 @@
 #include <thread>
 
 
-#define MINER_VERSION "2.01"
+#include "version.h"
+
 
 using namespace std;
 

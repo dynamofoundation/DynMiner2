@@ -73,6 +73,13 @@ unsigned int countLeadingZeros(unsigned char* hash) {
     return c;
 }
 
+static void checkReturn(const char* call, int val) {
+    if (val != CL_SUCCESS) {
+        printf("OPENCL rrror %d calling %s\n.", val, call);
+        exit(0);
+    }
+}
+
 void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize) {
 
     bool workReady = false;
@@ -104,8 +111,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
 
-    returnVal = clGetPlatformIDs(16, platform_id, &ret_num_platforms);
-    returnVal = clGetDeviceIDs(platform_id[platformID], CL_DEVICE_TYPE_GPU, 16, open_cl_devices, &numOpenCLDevices);
+    checkReturn("clGetPlatformIDs", clGetPlatformIDs(16, platform_id, &ret_num_platforms));
+    checkReturn("clGetDeviceIDs", clGetDeviceIDs(platform_id[platformID], CL_DEVICE_TYPE_GPU, 16, open_cl_devices, &numOpenCLDevices));
     cl_context context = clCreateContext(NULL, 1, &open_cl_devices[deviceID], NULL, NULL, &returnVal);
 
     cl_program program = loadMiner(context, &open_cl_devices[deviceID]);
@@ -113,21 +120,21 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     kernel = clCreateKernel(program, "dyn_hash", &returnVal);
     commandQueue = clCreateCommandQueueWithProperties(context, open_cl_devices[deviceID], NULL, &returnVal);
 
-    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, getWork->programVM->byteCode.size() * 4, NULL, &returnVal);
-    returnVal = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer);
+    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, getWork->programVM->byteCode.size() * 4, NULL, &returnVal);
+    checkReturn("clSetKernelArg", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
 
     hashResultSize = computeUnits * 32;
-    clGPUHashResultBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, hashResultSize, NULL, &returnVal);
+    clGPUHashResultBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, hashResultSize, NULL, &returnVal);
     returnVal = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clGPUHashResultBuffer);
     buffHashResult = (uint32_t*)malloc(hashResultSize);
 
     headerBuffSize = 80;
-    clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, headerBuffSize, NULL, &returnVal);
+    clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, headerBuffSize, NULL, &returnVal);
     returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer);
     buffHeader = (unsigned char*)malloc(headerBuffSize);
 
     nonceBuffSize = computeUnits * sizeof(uint32_t);
-    clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_ALLOC_HOST_PTR, nonceBuffSize, NULL, &returnVal);
+    clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, nonceBuffSize, NULL, &returnVal);
     returnVal = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer);
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
@@ -143,8 +150,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
         string jobID = getWork->jobID;
         memcpy(buffHeader, getWork->nativeData, 80);
 
-        returnVal = clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4,
-            getWork->programVM->byteCode.data(), 0, NULL, NULL);
+        checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4, getWork->programVM->byteCode.data(), 0, NULL, NULL));
 
         getWork->lockJob.unlock();
 
@@ -157,12 +163,12 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
         while (workID == getWork->workID) {
             memcpy(&buffHeader[76], &nonce, 4);
 
-            returnVal = clEnqueueWriteBuffer(commandQueue, clGPUHeaderBuffer, CL_TRUE, 0, headerBuffSize, buffHeader, 0, NULL, NULL);
+            checkReturn("clEnqueueWriteBuffer - header", clEnqueueWriteBuffer(commandQueue, clGPUHeaderBuffer, CL_TRUE, 0, headerBuffSize, buffHeader, 0, NULL, NULL));
             size_t localWorkSize = gpuWorkSize;
-            returnVal = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &computeUnits, &localWorkSize, 0, NULL, NULL);
-            returnVal = clFinish(commandQueue);
-            returnVal = clEnqueueReadBuffer(commandQueue, clGPUHashResultBuffer, CL_TRUE, 0, hashResultSize, buffHashResult, 0, NULL, NULL);
-            returnVal = clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, nonceBuffSize, buffNonce, 0, NULL, NULL);
+            checkReturn("clEnqueueNDRangeKernel", clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &computeUnits, &localWorkSize, 0, NULL, NULL));
+            checkReturn("clFinish", clFinish(commandQueue));
+            checkReturn("clEnqueueReadBuffer - hash", clEnqueueReadBuffer(commandQueue, clGPUHashResultBuffer, CL_TRUE, 0, hashResultSize, buffHashResult, 0, NULL, NULL));
+            checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, nonceBuffSize, buffNonce, 0, NULL, NULL));
 
             submitter->addHashResults((unsigned char*)buffHashResult, computeUnits, jobID, deviceID, buffNonce);
 
@@ -217,7 +223,11 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 
     cl_program program;
 
-    if (_strnicmp("#define VERSION 2.02", kernelSource, 20) != 0) {
+
+    char versionLine[256];
+    sprintf(versionLine, "#define VERSION %s", MINER_VERSION);
+
+    if (_strnicmp(versionLine, kernelSource, strlen(versionLine)) != 0) {
         printf("Incorrect OpenCL program file.\n");
         exit(0);
     }

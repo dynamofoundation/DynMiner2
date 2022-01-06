@@ -52,7 +52,9 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 	while (true) {
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"gethashfunction\", \"params\" : [] }");
-		strProgram = jResult["result"][0]["program"];
+        strProgram = jResult["result"][0]["program"];
+        int start_time = jResult["result"][0]["start_time"];
+        printf("got program %d\n", start_time);
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
         setJobDetailsSolo(jResult);
@@ -60,13 +62,17 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 
         reqNewBlockFlag = false;
         bool newBlock = false;
-        while ((!newBlock) && (!reqNewBlockFlag)) {
+        time_t start, now;
+        time(&start);
+        time(&now);
+        while ((!newBlock) && (!reqNewBlockFlag) && (now - start < 45)) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
             if (jResult["result"]["height"] != chainHeight) {
                 newBlock = true;
                 //printf("Requesting new block");
             }
+            time(&now);
         }
 
 
