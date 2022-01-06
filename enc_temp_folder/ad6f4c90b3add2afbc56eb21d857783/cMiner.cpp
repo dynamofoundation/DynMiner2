@@ -228,19 +228,10 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
     char versionLine[256];
     sprintf(versionLine, "#define VERSION %s", MINER_VERSION);
 
-#ifdef _WIN32
     if (_strnicmp(versionLine, kernelSource, strlen(versionLine)) != 0) {
         printf("Incorrect OpenCL program file.\n");
         exit(0);
     }
-#endif // _WIN32
-
-#ifdef __linux__
-    if (strnicmp(versionLine, kernelSource, strlen(versionLine)) != 0) {
-        printf("Incorrect OpenCL program file.\n");
-        exit(0);
-    }
-#endif
 
     // Create kernel program
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
