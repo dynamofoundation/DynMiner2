@@ -236,7 +236,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 #endif // _WIN32
 
 #ifdef __linux__
-    if (strnicmp(versionLine, kernelSource, strlen(versionLine)) != 0) {
+    if (strncasecmp(versionLine, kernelSource, strlen(versionLine)) != 0) {
         printf("Incorrect OpenCL program file.\n");
         exit(0);
     }
