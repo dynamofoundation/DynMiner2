@@ -53,6 +53,8 @@ public:
 	json execRPC(string data);
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
+	cStatDisplay* stats;
+
 	atomic<uint32_t> difficultyTarget{ 0 };
 	atomic<uint32_t> workID;
 	mutex lockJob;

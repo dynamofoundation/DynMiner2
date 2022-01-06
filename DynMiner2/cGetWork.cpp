@@ -29,6 +29,8 @@ bool readLine(vector<char>& buffer, string& line) {
 
 void cGetWork::getWork(string mode, int stratumSocket, cStatDisplay* statDisplay) {
 
+    stats = statDisplay;
+
     curl = curl_easy_init();
 
 	programVM = new cProgramVM();
@@ -272,6 +274,45 @@ size_t cGetWork::WriteMemoryCallback(void* contents, size_t size, size_t nmemb, 
 	mem->memory[mem->size] = 0;
 
 	return realsize;
+}
+
+static inline uint32_t CLZz(register uint32_t x)
+{
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    x -= ((x >> 1) & 0x55555555U);
+    x = (x & 0x33333333U) + ((x >> 2) & 0x33333333U);
+    return 32U - ((((x + (x >> 4)) & 0x0F0F0F0FU) * 0x01010101U) >> 24);
+}
+
+
+//todo - maybe a better way to do this, but might have only marginal CPU enhancement
+static unsigned int countLeadingZeros(unsigned char* hash) {
+    int c = CLZz((hash[0] << 24) + (hash[1] << 16) + (hash[2] << 8) + hash[3]);
+    if (c == 32) {
+        c += CLZz((hash[4] << 24) + (hash[5] << 16) + (hash[6] << 8) + hash[7]);
+        if (c == 64) {
+            c += CLZz((hash[8] << 24) + (hash[9] << 16) + (hash[10] << 8) + hash[11]);
+            if (c == 96) {
+                c += CLZz((hash[12] << 24) + (hash[13] << 16) + (hash[14] << 8) + hash[15]);
+                if (c == 128) {
+                    c += CLZz((hash[16] << 24) + (hash[17] << 16) + (hash[18] << 8) + hash[19]);
+                    if (c == 160) {
+                        c += CLZz((hash[20] << 24) + (hash[21] << 16) + (hash[22] << 8) + hash[23]);
+                        if (c == 192) {
+                            c += CLZz((hash[24] << 24) + (hash[25] << 16) + (hash[26] << 8) + hash[27]);
+                            if (c == 224)
+                                c += CLZz((hash[28] << 24) + (hash[29] << 16) + (hash[30] << 8) + hash[31]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return c;
 }
 
 
@@ -543,6 +584,9 @@ void cGetWork::setJobDetailsSolo(json result) {
 
     programVM->byteCode.clear();
     programVM->generateBytecode(program, merkleRoot, prevBlockHashBin);
+
+    if (stats != NULL)
+        stats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
 
     workID++;
 

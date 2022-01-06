@@ -120,7 +120,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     kernel = clCreateKernel(program, "dyn_hash", &returnVal);
     commandQueue = clCreateCommandQueueWithProperties(context, open_cl_devices[deviceID], NULL, &returnVal);
 
-    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, getWork->programVM->byteCode.size() * 4, NULL, &returnVal);
+    size_t programBufferSize = 8192;  //getWork->programVM->byteCode.size() * 4
+    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, programBufferSize, NULL, &returnVal);
     checkReturn("clSetKernelArg", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
 
     hashResultSize = computeUnits * 32;

@@ -1,3 +1,3 @@
 #pragma once
 
-#define MINER_VERSION "2.02"
+#define MINER_VERSION "2.03"
