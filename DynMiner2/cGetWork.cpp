@@ -109,8 +109,8 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 					else if (method == "mining.set_difficulty") {
 						const std::vector<uint32_t>& params = msg["params"];
 						difficultyTarget = params[0];
-                        if (difficultyTarget < 200)
-                            difficultyTarget = 200;
+                        //if (difficultyTarget < 20)
+                        //    difficultyTarget = 20;
 						statDisplay->latest_diff.store(difficultyTarget);
 					}
 					else {
@@ -131,6 +131,7 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 							const std::vector<json>& error = msg["error"];
 							const int code = error[0];
 							const std::string& message = error[1];
+                            printf("%s\n", message.c_str());
 							statDisplay->rejected_share_count++;
 							///////printf("Error (%s): %s (code: %d)\n", resp.c_str(), message.c_str(), code);
 							////////////miner.shares.stats.rejected_share_count++;

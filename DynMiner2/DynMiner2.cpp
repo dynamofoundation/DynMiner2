@@ -10,6 +10,10 @@
 
 //-mode solo -server http://testnet1.dynamocoin.org:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
 
+//-mode stratum -server ayyo.chickenkiller.com -port 8332 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,0
+
+
+
 #include <iostream>
 #include "cStatDisplay.h"
 #include "cGetWork.h"

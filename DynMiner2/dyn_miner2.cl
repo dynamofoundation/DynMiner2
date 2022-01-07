@@ -1,4 +1,4 @@
-#define VERSION 2.04
+#define VERSION 2.05
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
@@ -375,7 +375,7 @@ __constant uint MemDataConsts[8] =
 
 
 
-__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* hostNonce, __global uint* programStartTime) {
+__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* hostNonce, __global uint* programStartTime, __global uint* global_memgen) {
     
     int computeUnitID = get_global_id(0);
 
@@ -556,8 +556,11 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
             uint loop_opcode_count;
             uint loop_line_ptr;
 
-            uint myMemGen[512][8];
+            __global uint *myMemGen = &global_memgen[computeUnitID * 512 * 8];
             uint tempStore[8];
+
+            //uint myMemGen[8 * 512];
+
 
 
             while (done == 0) {
@@ -602,7 +605,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     for (int i = 0; i < currentMemSize; i++) {
                         sha256(32, myHashResult, myHashResult);
                         for (int j = 0; j < 8; j++)
-                            myMemGen[i][j] = myHashResult[j];
+                            myMemGen[i*8+j] = myHashResult[j];
                     }
 
 
@@ -615,7 +618,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                     for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++)
-                            myMemGen[i][j] += byteCode[linePtr + j];
+                            myMemGen[i*8+j] += byteCode[linePtr + j];
 
                     linePtr += 8;
                 }
@@ -625,8 +628,8 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                     for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++) {
-                            myMemGen[i][j] += myHashResult[j];
-                            myMemGen[i][j] += prevHashSHA[j];
+                            myMemGen[i * 8 + j] += myHashResult[j];
+                            myMemGen[i * 8 + j] += prevHashSHA[j];
                         }
 
                 }
@@ -637,7 +640,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                     for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++)
-                            myMemGen[i][j] ^= byteCode[linePtr + j];
+                            myMemGen[i * 8 + j] ^= byteCode[linePtr + j];
 
                     linePtr += 8;
                 }
@@ -647,8 +650,8 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                     for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++) {
-                            myMemGen[i][j] += myHashResult[j];
-                            myMemGen[i][j] ^= prevHashSHA[j];
+                            myMemGen[i * 8 + j] += myHashResult[j];
+                            myMemGen[i * 8 + j] ^= prevHashSHA[j];
                         }
 
                 }
@@ -658,7 +661,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     linePtr++;
                     uint index = byteCode[linePtr] % currentMemSize;
                     for (int j = 0; j < 8; j++)
-                        myHashResult[j] = myMemGen[index][j];
+                        myHashResult[j] = myMemGen[index*8 + j];
 
                     linePtr++;
                 }
@@ -684,7 +687,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     index = index % currentMemSize;
 
                     for (int j = 0; j < 8; j++)
-                        myHashResult[j] = myMemGen[index][j];
+                        myHashResult[j] = myMemGen[index*8+j];
 
                     linePtr++;
 

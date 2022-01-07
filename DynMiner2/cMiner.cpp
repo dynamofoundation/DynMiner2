@@ -75,7 +75,7 @@ unsigned int countLeadingZeros(unsigned char* hash) {
 
 static void checkReturn(const char* call, int val) {
     if (val != CL_SUCCESS) {
-        printf("OPENCL rrror %d calling %s\n.", val, call);
+        printf("OPENCL error %d calling %s\n.", val, call);
         exit(0);
     }
 }
@@ -109,6 +109,9 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     uint32_t* buffNonce;
 
     cl_mem clProgStartTime;
+
+    cl_mem clMemgenBuffer;
+    unsigned char* memGenBuffer;
 
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
@@ -144,6 +147,10 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     uint32_t progStartTime;
     clProgStartTime = clCreateBuffer(context, CL_MEM_READ_WRITE, 4, NULL, &returnVal);
     checkReturn("clSetKernelArg - progstarttime", clSetKernelArg(kernel, 4, sizeof(cl_mem), (void*)&clProgStartTime));
+
+    size_t memgenBufferSize = 512 * 8 * computeUnits * sizeof(uint32_t);
+    clMemgenBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, memgenBufferSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
 
 
     while (true) {
