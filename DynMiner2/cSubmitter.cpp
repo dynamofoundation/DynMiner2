@@ -214,6 +214,8 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\"] }");
 
+        printf("submit result: %s\n", jResult.dump().c_str());
+
         if (jResult["error"].is_null()) {
             //printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
             getWork->reqNewBlockFlag = true;

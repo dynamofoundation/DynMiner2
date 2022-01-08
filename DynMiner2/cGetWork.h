@@ -47,7 +47,7 @@ public:
 	cGetWork();
 	void getWork(string mode, int stratumSocket, cStatDisplay *statDisplay);
 	void setJobDetailsStratum(json msg);
-	void setJobDetailsSolo(json msg);
+	void setJobDetailsSolo(json msg, uint32_t extranonce);
 	void startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay);
 	void startSoloGetWork(cStatDisplay* statDisplay);
 	json execRPC(string data);

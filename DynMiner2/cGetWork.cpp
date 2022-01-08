@@ -52,15 +52,20 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
     transactionString = NULL;
 
 	while (true) {
-
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"gethashfunction\", \"params\" : [] }");
         strProgram = jResult["result"][0]["program"];
         int start_time = jResult["result"][0]["start_time"];
         printf("got program %d\n", start_time);
         programStartTime = start_time;
 
+
+        auto nonceNow = std::chrono::high_resolution_clock::now();
+        auto tick = nonceNow.time_since_epoch();
+        uint64_t lTick = tick.count();
+        uint32_t extra_nonce = lTick % 0xFFFFFFFF;
+
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
-        setJobDetailsSolo(jResult);
+        setJobDetailsSolo(jResult, extra_nonce);
         statDisplay->blockHeight = jResult["result"]["height"];
 
         reqNewBlockFlag = false;
@@ -68,7 +73,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
         time_t start, now;
         time(&start);
         time(&now);
-        while ((!newBlock) && (!reqNewBlockFlag) && (now - start < 45)) {
+        while ((!newBlock) && (!reqNewBlockFlag) && (now - start < 3)) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
             if (jResult["result"]["height"] != chainHeight) {
@@ -77,10 +82,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
             }
             time(&now);
         }
-
-
 	}
-
 }
 
 
@@ -324,7 +326,7 @@ static unsigned int countLeadingZeros(unsigned char* hash) {
 
 
 
-void cGetWork::setJobDetailsSolo(json result) {
+void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
 
 
     lockJob.lock();

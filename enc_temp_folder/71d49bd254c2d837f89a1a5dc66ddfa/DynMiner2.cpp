@@ -3,6 +3,17 @@
 
 
 
+//-mode solo -server http://192.168.1.193:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
+//-mode solo -server http://52.73.55.126:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
+//-mode stratum -server web.letshash.it -port 5966 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1 -miner GPU,16384,128,0,0
+//-mode stratum -server pond.nethervoid.net -port 4234 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,1
+
+//-mode solo -server http://testnet1.dynamocoin.org:6433/ -user user -pass 123456 -wallet dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg -miner GPU,65536,128,0,0
+
+//-mode stratum -server ayyo.chickenkiller.com -port 8332 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2 -miner GPU,16384,128,0,0
+//-mode stratum -server dynamo.na.mine.zergpool.com -port 4234 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdr49j6h60gg.test2 -pass d=2,c=DYNAMO -miner GPU,16384,128,0,0
+
+
 
 #include <iostream>
 #include "cStatDisplay.h"
