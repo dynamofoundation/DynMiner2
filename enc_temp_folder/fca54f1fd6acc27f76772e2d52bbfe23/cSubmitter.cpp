@@ -50,7 +50,7 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
                 unsigned char* ptr = hashResult->buffer;
                 for (uint32_t k = 0; k < hashResult->hashCount; k++) {
                     unsigned int numZeros = countLeadingZeros(ptr);
-                    if (numZeros > target) {
+                    if (numZeros >= target) {
                         nonceListLock.lock();
                         uint32_t nonce = hashResult->nonceIndex[k];
                         cNonceEntry* entry = new cNonceEntry();
