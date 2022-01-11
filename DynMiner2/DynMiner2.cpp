@@ -211,20 +211,21 @@ void startGetWork() {
 }
 
 
-void startOneMiner(std::string params) {
+void startOneMiner(std::string params, uint32_t GPUIndex) {
     printf("Starting miner with params: %s\n", params.c_str());
 
     cMiner *miner = new cMiner();
-    thread minerThread(&cMiner::startMiner, miner, params, getWork, submitter, statDisplay);
+    thread minerThread(&cMiner::startMiner, miner, params, getWork, submitter, statDisplay, GPUIndex);
     minerThread.detach();
 }
 
 
 void startMiners() {
+	uint32_t GPUIndex = 0;
     pair<multimap<string, string>::iterator, multimap<string, string>::iterator> range = commandArgs.equal_range("-miner");
     multimap<string, string>::iterator it;
-    for (it = range.first; it != range.second; ++it)
-        startOneMiner(it->second);
+    for (it = range.first; it != range.second; ++it, ++GPUIndex)
+        startOneMiner(it->second, GPUIndex);
 }
 
 
