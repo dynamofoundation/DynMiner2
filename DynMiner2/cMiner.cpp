@@ -4,6 +4,18 @@
 #include "cStatDisplay.h"
 #include "cProgramVM.h"
 
+uint64_t BSWAP64(uint64_t x)
+{
+	return  ( (x << 56) & 0xff00000000000000UL ) |
+		( (x << 40) & 0x00ff000000000000UL ) |
+		( (x << 24) & 0x0000ff0000000000UL ) |
+		( (x <<  8) & 0x000000ff00000000UL ) |
+		( (x >>  8) & 0x00000000ff000000UL ) |
+		( (x >> 24) & 0x0000000000ff0000UL ) |
+		( (x >> 40) & 0x000000000000ff00UL ) |
+		( (x >> 56) & 0x00000000000000ffUL );
+}
+
 void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, uint32_t GPUIndex) {
 
     vector<string> vParams = split(params, ",");
@@ -146,7 +158,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
-    uint64_t target = __builtin_bswap64(((uint64_t *)getWork->nativeTarget)[0]);
+    uint64_t target = BSWAP64(((uint64_t *)getWork->nativeTarget)[0]);
     checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
 
     size_t memgenBufferSize = 512 * 8 * computeUnits * sizeof(uint32_t);
