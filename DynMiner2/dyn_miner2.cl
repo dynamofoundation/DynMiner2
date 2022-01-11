@@ -1,4 +1,4 @@
-#define VERSION 2.05
+#define VERSION 2.05-wolf
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
