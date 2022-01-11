@@ -279,6 +279,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 
     // Create kernel program
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
+    // Argument #4 here is the arguments to the kernel.
     returnVal = clBuildProgram(program, 1, deviceID, NULL, NULL, NULL);
 
 
