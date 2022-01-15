@@ -4,7 +4,19 @@
 #include "cStatDisplay.h"
 #include "cProgramVM.h"
 
-void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay) {
+uint64_t BSWAP64(uint64_t x)
+{
+	return  ( (x << 56) & 0xff00000000000000UL ) |
+		( (x << 40) & 0x00ff000000000000UL ) |
+		( (x << 24) & 0x0000ff0000000000UL ) |
+		( (x <<  8) & 0x000000ff00000000UL ) |
+		( (x >>  8) & 0x00000000ff000000UL ) |
+		( (x >> 24) & 0x0000000000ff0000UL ) |
+		( (x >> 40) & 0x000000000000ff00UL ) |
+		( (x >> 56) & 0x00000000000000ffUL );
+}
+
+void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, uint32_t GPUIndex) {
 
     vector<string> vParams = split(params, ",");
 
@@ -26,7 +38,7 @@ void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter,
         int workSize = atoi(vParams[2].c_str());
         int platformID = atoi(vParams[3].c_str());
         int deviceID = atoi(vParams[4].c_str());
-        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize);
+        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex);
     }
     else
         printf("CPU miner not implemented\n");
@@ -80,7 +92,7 @@ static void checkReturn(const char* call, int val) {
     }
 }
 
-void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize) {
+void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex) {
 
     bool workReady = false;
     while (!workReady) {
@@ -139,69 +151,81 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clSetKernelArg - header", returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer));
     buffHeader = (unsigned char*)malloc(headerBuffSize);
 
-    nonceBuffSize = computeUnits * sizeof(uint32_t);
+    //nonceBuffSize = computeUnits * sizeof(uint32_t);
+    nonceBuffSize = sizeof(cl_uint) * 0x100;
+    
     clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, nonceBuffSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
-    uint32_t progStartTime;
-    clProgStartTime = clCreateBuffer(context, CL_MEM_READ_WRITE, 4, NULL, &returnVal);
-    checkReturn("clSetKernelArg - progstarttime", clSetKernelArg(kernel, 4, sizeof(cl_mem), (void*)&clProgStartTime));
+    uint64_t target = BSWAP64(((uint64_t *)getWork->nativeTarget)[0]);
+    checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
 
     size_t memgenBufferSize = 512 * 8 * computeUnits * sizeof(uint32_t);
     clMemgenBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, memgenBufferSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
 
 
+
     while (true) {
-        unsigned int nonce;
+        //unsigned int nonce;
         int workID;
 
 
         getWork->lockJob.lock();
 
-        progStartTime = getWork->programStartTime;
-
+        //progStartTime = getWork->programStartTime;
+		
+		/*
         uint32_t openCLprogramLoops;
         if (progStartTime == 1)
             openCLprogramLoops = 200;
         else
-            openCLprogramLoops = 1;
-
+            openCLprogramLoops = 8;
+		*/
+		uint32_t openCLprogramLoops = 8;
 
         workID = getWork->workID;
         string jobID = getWork->jobID;
         memcpy(buffHeader, getWork->nativeData, 80);
 
         checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4, getWork->programVM->byteCode.data(), 0, NULL, NULL));
-        checkReturn("clEnqueueWriteBuffer - progstart", clEnqueueWriteBuffer(commandQueue, clProgStartTime, CL_TRUE, 0, 4, &progStartTime, 0, NULL, NULL));
+        //checkReturn("clEnqueueWriteBuffer - progstart", clEnqueueWriteBuffer(commandQueue, clProgStartTime, CL_TRUE, 0, 4, &progStartTime, 0, NULL, NULL));
 
         getWork->lockJob.unlock();
-
-        getWork->nonceLock.lock();
-        nonce = getWork->masterNonce;
-        getWork->masterNonce += computeUnits * openCLprogramLoops;
-        getWork->nonceLock.unlock();
+        
+        // WARNING: what if they have multiple platforms?
+		uint32_t MinNonce = (0xFFFFFFFFULL / numOpenCLDevices) * GPUIndex;
+		uint32_t MaxNonce = MinNonce + (0xFFFFFFFFULL / numOpenCLDevices);
+		uint32_t nonce = MinNonce;
 
 
         while (workID == getWork->workID) {
             memcpy(&buffHeader[76], &nonce, 4);
-
+			uint32_t zero = 0;
+			size_t gOffset = nonce;
+			
             checkReturn("clEnqueueWriteBuffer - header", clEnqueueWriteBuffer(commandQueue, clGPUHeaderBuffer, CL_TRUE, 0, headerBuffSize, buffHeader, 0, NULL, NULL));
+            checkReturn("clEnqueueWriteBuffer - NonceRetBuf", clEnqueueWriteBuffer(commandQueue, clNonceBuffer, CL_TRUE, sizeof(cl_uint) * 0xFF, sizeof(cl_uint), &zero, 0, NULL, NULL));
             size_t localWorkSize = gpuWorkSize;
-            checkReturn("clEnqueueNDRangeKernel", clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &computeUnits, &localWorkSize, 0, NULL, NULL));
+            checkReturn("clEnqueueNDRangeKernel", clEnqueueNDRangeKernel(commandQueue, kernel, 1, &gOffset, &computeUnits, &localWorkSize, 0, NULL, NULL));
             checkReturn("clFinish", clFinish(commandQueue));
-            checkReturn("clEnqueueReadBuffer - hash", clEnqueueReadBuffer(commandQueue, clGPUHashResultBuffer, CL_TRUE, 0, hashResultSize, buffHashResult, 0, NULL, NULL));
-            checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, nonceBuffSize, buffNonce, 0, NULL, NULL));
-
-            submitter->addHashResults((unsigned char*)buffHashResult, computeUnits, jobID, deviceID, buffNonce);
-
-            getWork->nonceLock.lock();
-            nonce = getWork->masterNonce;
-            getWork->masterNonce += computeUnits * openCLprogramLoops;
-            getWork->nonceLock.unlock();
-
+            //checkReturn("clEnqueueReadBuffer - hash", clEnqueueReadBuffer(commandQueue, clGPUHashResultBuffer, CL_TRUE, 0, hashResultSize, buffHashResult, 0, NULL, NULL));
+            //checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, nonceBuffSize, buffNonce, 0, NULL, NULL));
+			checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, sizeof(cl_uint) * 0x100, buffNonce, 0, NULL, NULL));
+			
+			for(int i = 0; i < buffNonce[0xFF]; ++i)
+			{
+				submitter->submitNonce(buffNonce[i], getWork);
+			}
+			
+			nonce += computeUnits * openCLprogramLoops;
             statDisplay->nonce_count += computeUnits * openCLprogramLoops;
+            
+            if(nonce >= MaxNonce)
+            {
+				printf("WARNING: GPU ran out of work!\nTODO: Fix me.\n.");
+			}
         }
     }
     
@@ -267,6 +291,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
 
     // Create kernel program
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
+    // Argument #4 here is the arguments to the kernel.
     returnVal = clBuildProgram(program, 1, deviceID, NULL, NULL, NULL);
 
 

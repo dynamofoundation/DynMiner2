@@ -249,7 +249,7 @@ json cGetWork::execRPC(string data) {
 	curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
 	curl_easy_setopt(curl, CURLOPT_USERNAME, rpcUser.c_str());
 	curl_easy_setopt(curl, CURLOPT_PASSWORD, rpcPassword.c_str());
-
+	
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&chunk);
 
@@ -324,8 +324,6 @@ static unsigned int countLeadingZeros(unsigned char* hash) {
     return c;
 }
 
-
-
 void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
 
 
@@ -381,6 +379,13 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
         if (n < 0x100 && n >= 0x80)
             cbtx[cbtx_size++] = 0;
     }
+    
+    //memcpy(cbtx + cbtx_size, cbmsg, strlen(cbmsg));
+    //cbtx_size += strlen(cbmsg);
+    
+    //memcpy(cbtx + cbtx_size, cbmsg3, strlen(cbmsg3));
+    //cbtx_size += strlen(cbmsg3);
+    
     cbtx[42] = cbtx_size - 43;
 
     cbtx[41] = cbtx_size - 42;      //script signature length
