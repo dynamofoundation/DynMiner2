@@ -30,6 +30,7 @@ bool readLine(vector<char>& buffer, string& line) {
 void cGetWork::getWork(string mode, int stratumSocket, cStatDisplay* statDisplay) {
 
     stats = statDisplay;
+    miningMode = mode;
 
     curl = curl_easy_init();
 
@@ -66,7 +67,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
         setJobDetailsSolo(jResult, extra_nonce);
-        statDisplay->blockHeight = jResult["result"]["height"];
+        statDisplay->totalStats->blockHeight = jResult["result"]["height"];
 
         reqNewBlockFlag = false;
         bool newBlock = false;
@@ -111,9 +112,7 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 					else if (method == "mining.set_difficulty") {
 						const std::vector<uint32_t>& params = msg["params"];
 						difficultyTarget = params[0];
-                        //if (difficultyTarget < 20)
-                        //    difficultyTarget = 20;
-						statDisplay->latest_diff.store(difficultyTarget);
+ 						statDisplay->totalStats->latest_diff.store(difficultyTarget);
 					}
 					else {
 						printf("Unknown stratum method %s\n", method.data());
@@ -134,12 +133,12 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
 							const int code = error[0];
 							const std::string& message = error[1];
                             printf("%s\n", message.c_str());
-							statDisplay->rejected_share_count++;
+							statDisplay->totalStats->rejected_share_count++;
 							///////printf("Error (%s): %s (code: %d)\n", resp.c_str(), message.c_str(), code);
 							////////////miner.shares.stats.rejected_share_count++;
 						}
 						else {
-							statDisplay->accepted_share_count++;
+							statDisplay->totalStats->accepted_share_count++;
 							///printf("accepted\n");
 							////////////miner.shares.stats.accepted_share_count++;
 						}
@@ -600,7 +599,7 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
     programVM->generateBytecode(program, merkleRoot, prevBlockHashBin);
 
     if (stats != NULL)
-        stats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
+        stats->totalStats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
 
     workID++;
 

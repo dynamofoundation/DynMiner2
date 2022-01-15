@@ -1,4 +1,4 @@
-#define VERSION 2.05-wolf
+#define VERSION 2.06
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
@@ -636,15 +636,14 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     
     int computeUnitID = get_global_id(0) - get_global_offset(0);
 
-    uint GPU_LOOPS;
-    GPU_LOOPS = 8;
+    //uint GPU_LOOPS;
+    //GPU_LOOPS = 8;
 
     __global uint* hostHashResult = &hashResult[computeUnitID * 8];
 
     uint myHeader[20];
     uint myHashResult[8];
 
-    //uint nonce = hostHeader[19] + computeUnitID * GPU_LOOPS;
     uint nonce = get_global_id(0) * GPU_LOOPS;
 
     for ( int i = 0; i < 19; i++)
@@ -670,7 +669,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
             uint linePtr = 0;
             uint done = 0;
-            //uint currentMemSize = 0;
+            uint currentMemSize = 0;
             uint instruction = 0;
 
             uint loop_opcode_count;
@@ -716,9 +715,9 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 else if (byteCode[linePtr] == HASHOP_MEMGEN) {
                     linePtr++;
 
-                    //currentMemSize = byteCode[linePtr];
+                    currentMemSize = byteCode[linePtr];
 
-                    for (int i = 0; i < 512; i++) {
+                    for (int i = 0; i < currentMemSize; i++) {
                         sha256(32, myHashResult, myHashResult);
                         for (int j = 0; j < 8; j++)
                             myMemGen[i*8+j] = myHashResult[j];
@@ -732,7 +731,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 else if (byteCode[linePtr] == HASHOP_MEMADD) {
                     linePtr++;
 
-                    for (int i = 0; i < 512; i++)
+                    for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++)
                             myMemGen[i*8+j] += byteCode[linePtr + j];
 
@@ -742,10 +741,9 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 else if (byteCode[linePtr] == HASHOP_MEMADDHASHPREV) {
                     linePtr++;
 
-                    for (int i = 0; i < 512; i++)
+                    for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++) {
                             myMemGen[i * 8 + j] += myHashResult[j] + prevHashSHA[j];
-                            //myMemGen[i * 8 + j] += prevHashSHA[j];
                         }
 
                 }
@@ -754,7 +752,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 else if (byteCode[linePtr] == HASHOP_MEMXOR) {
                     linePtr++;
 
-                    for (int i = 0; i < 512; i++)
+                    for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++)
                             myMemGen[i * 8 + j] ^= byteCode[linePtr + j];
 
@@ -764,7 +762,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                 else if (byteCode[linePtr] == HASHOP_MEMXORHASHPREV) {
                     linePtr++;
 
-                    for (int i = 0; i < 512; i++)
+                    for (int i = 0; i < currentMemSize; i++)
                         for (int j = 0; j < 8; j++) {
                             myMemGen[i * 8 + j] += myHashResult[j];
                             myMemGen[i * 8 + j] ^= prevHashSHA[j];
@@ -775,7 +773,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                 else if (byteCode[linePtr] == HASHOP_MEM_SELECT) {
                     linePtr++;
-                    uint index = byteCode[linePtr] % 512;
+                    uint index = byteCode[linePtr] % currentMemSize;
                     for (int j = 0; j < 8; j++)
                         myHashResult[j] = myMemGen[index*8 + j];
 
@@ -800,7 +798,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                         index += myHashResult[i];
 
 
-                    index = index % 512;
+                    index = index % currentMemSize;
 
                     for (int j = 0; j < 8; j++)
                         myHashResult[j] = myMemGen[index*8+j];
@@ -880,42 +878,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
         }
 		
-		/*
-        uint test[8];
-        for (int ii = 0; ii < 8; ii++)
-            test[ii] = endianSwap(myHashResult[ii]);
-
-        uint c = CLZz(test[0]);
-        if (c == 32) {
-            c += CLZz(test[1]);
-            if (c == 64) {
-                c += CLZz(test[2]);
-                if (c == 96) {
-                    c += CLZz(test[3]);
-                    if (c == 128) {
-                        c += CLZz(test[4]);
-                        if (c == 160) {
-                            c += CLZz(test[5]);
-                            if (c == 192) {
-                                c += CLZz(test[6]);
-                                if (c == 224) {
-                                    c += CLZz(test[7]);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-        if (c >= bestDiff) {
-            bestDiff = c;
-            bestNonce = nonce;
-            for (int yy = 0; yy < 8; yy++)
-                bestHash[yy] = myHashResult[yy];
-        }
-        */
         
         ulong res = as_ulong(as_uchar8(((ulong *)myHashResult)[0]).s76543210);
 		if(res <= target)
@@ -929,9 +891,4 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
         myHeader[19] = nonce;
 	}
 
-    //hostNonce[computeUnitID] = bestNonce;
-
-    //for ( int i = 0; i < 8; i++)
-    //    hostHashResult[i] = bestHash[i];
-		
 }

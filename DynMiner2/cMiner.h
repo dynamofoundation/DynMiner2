@@ -18,9 +18,9 @@ class cMiner
 {
 public:
 	void startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay* statDisplay, uint32_t GPUIndex);
-	void startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex);
+	void startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops);
 	vector<string> split(string str, string token);
-	cl_program loadMiner(cl_context context, cl_device_id* deviceID);
+	cl_program loadMiner(cl_context context, cl_device_id* deviceID, int gpuLoops);
 
 	cl_kernel kernel;
 	cl_command_queue commandQueue;

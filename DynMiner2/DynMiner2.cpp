@@ -47,6 +47,7 @@ struct sRpcConfigParams {
     string user;
     string pass;
     string wallet;
+    int hiveos;
 } rpcConfigParams;
 
 
@@ -107,10 +108,12 @@ void showUsage(const char* message) {
     printf("  -diff <initial difficulty>  [optional]\n");
     printf("  -wallet <wallet address>   [only used for solo]\n");
     printf("  -miner <miner params>\n");
+    printf("  -hiveos [0|1]   [optional, if 1 will format output for hiveos]\n");
     printf("\n");
     printf("<miner params> format:\n");
-    printf("  [CPU|GPU],<cores or compute units>[<work size>,<platform id>,<device id>]\n");
+    printf("  [CPU|GPU],<cores or compute units>[<work size>,<platform id>,<device id>[,<loops>]]\n");
     printf("  <work size>, <platform id> and <device id> are not required for CPU\n");
+    printf("  <loops> is an optional GPU tuning param - default is 1, optimal range can be 2 to 10 for high end cards");
     printf("  multiple miner params are allowed\n");
     printf("\n");
     printf("Example:\n");
@@ -131,7 +134,9 @@ void parseCommandArgs(int argc, char* argv[]) {
             argv[i][j] = tolower(argv[i][j]);
         commandArgs.emplace(argv[i], argv[i + 1]);
     }
-    
+
+    rpcConfigParams.hiveos = 0;
+
     if (commandArgs.find("-mode") == commandArgs.end())
         showUsage("Missing argument: mode");
     else {
@@ -178,6 +183,11 @@ void parseCommandArgs(int argc, char* argv[]) {
         showUsage("Missing argument: miner");
 
 
+    if (commandArgs.find("-hiveos") != commandArgs.end()) {
+        string num = commandArgs.find("-hiveos")->second;
+        rpcConfigParams.hiveos = atoi(num.c_str());
+    }
+
 
 }
 
@@ -194,7 +204,7 @@ void startSubmitter() {
 
 void startStatDisplay() {
  
-    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter, minerMode);
+    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter, minerMode, rpcConfigParams.hiveos);
     statThread.detach();
 }
 

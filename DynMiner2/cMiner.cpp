@@ -31,14 +31,17 @@ void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter,
     int deviceID;
 
     if (type == 'g') {
-        if (vParams.size() != 5) {
+        if ((vParams.size() != 5) && (vParams.size() != 6)) {
             printf("GPU miner must specify work items, platform ID and device ID\n");
             exit(0);
         }
         int workSize = atoi(vParams[2].c_str());
         int platformID = atoi(vParams[3].c_str());
         int deviceID = atoi(vParams[4].c_str());
-        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex);
+        int gpuLoops = 1;
+        if (vParams.size() == 6)
+            gpuLoops = atoi(vParams[5].c_str());
+        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex, gpuLoops);
     }
     else
         printf("CPU miner not implemented\n");
@@ -92,7 +95,7 @@ static void checkReturn(const char* call, int val) {
     }
 }
 
-void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex) {
+void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops) {
 
     bool workReady = false;
     while (!workReady) {
@@ -132,7 +135,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clGetDeviceIDs", clGetDeviceIDs(platform_id[platformID], CL_DEVICE_TYPE_GPU, 16, open_cl_devices, &numOpenCLDevices));
     cl_context context = clCreateContext(NULL, 1, &open_cl_devices[deviceID], NULL, NULL, &returnVal);
 
-    cl_program program = loadMiner(context, &open_cl_devices[deviceID]);
+    cl_program program = loadMiner(context, &open_cl_devices[deviceID], gpuLoops);
 
     kernel = clCreateKernel(program, "dyn_hash", &returnVal);
     commandQueue = clCreateCommandQueueWithProperties(context, open_cl_devices[deviceID], NULL, &returnVal);
@@ -151,46 +154,45 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clSetKernelArg - header", returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer));
     buffHeader = (unsigned char*)malloc(headerBuffSize);
 
-    //nonceBuffSize = computeUnits * sizeof(uint32_t);
     nonceBuffSize = sizeof(cl_uint) * 0x100;
     
     clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, nonceBuffSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
-    uint64_t target = BSWAP64(((uint64_t *)getWork->nativeTarget)[0]);
-    checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
 
-    size_t memgenBufferSize = 512 * 8 * computeUnits * sizeof(uint32_t);
+    size_t memgenBufferSize = 512 * 8 * computeUnits * sizeof(uint32_t);        //TODO - analyze program to find maximum memgen size
     clMemgenBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, memgenBufferSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
 
 
+    char cKey[32];
+    sprintf(cKey, "%02d:%02d.0", platformID, deviceID);
+    string sKey = string::basic_string(cKey);
+    statDisplay->addCard(sKey);
 
     while (true) {
-        //unsigned int nonce;
         int workID;
 
 
         getWork->lockJob.lock();
 
-        //progStartTime = getWork->programStartTime;
-		
-		/*
-        uint32_t openCLprogramLoops;
-        if (progStartTime == 1)
-            openCLprogramLoops = 200;
-        else
-            openCLprogramLoops = 8;
-		*/
-		uint32_t openCLprogramLoops = 8;
+		//uint32_t openCLprogramLoops = 8;
 
         workID = getWork->workID;
         string jobID = getWork->jobID;
         memcpy(buffHeader, getWork->nativeData, 80);
 
         checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4, getWork->programVM->byteCode.data(), 0, NULL, NULL));
-        //checkReturn("clEnqueueWriteBuffer - progstart", clEnqueueWriteBuffer(commandQueue, clProgStartTime, CL_TRUE, 0, 4, &progStartTime, 0, NULL, NULL));
+
+        if (getWork->miningMode == "solo") {
+            uint64_t target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
+            checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+        }
+        else if (getWork->miningMode == "stratum") {
+            uint64_t target = share_to_target(getWork->difficultyTarget) * 65536;
+            checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+        }
 
         getWork->lockJob.unlock();
         
@@ -198,7 +200,6 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
 		uint32_t MinNonce = (0xFFFFFFFFULL / numOpenCLDevices) * GPUIndex;
 		uint32_t MaxNonce = MinNonce + (0xFFFFFFFFULL / numOpenCLDevices);
 		uint32_t nonce = MinNonce;
-
 
         while (workID == getWork->workID) {
             memcpy(&buffHeader[76], &nonce, 4);
@@ -210,8 +211,6 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
             size_t localWorkSize = gpuWorkSize;
             checkReturn("clEnqueueNDRangeKernel", clEnqueueNDRangeKernel(commandQueue, kernel, 1, &gOffset, &computeUnits, &localWorkSize, 0, NULL, NULL));
             checkReturn("clFinish", clFinish(commandQueue));
-            //checkReturn("clEnqueueReadBuffer - hash", clEnqueueReadBuffer(commandQueue, clGPUHashResultBuffer, CL_TRUE, 0, hashResultSize, buffHashResult, 0, NULL, NULL));
-            //checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, nonceBuffSize, buffNonce, 0, NULL, NULL));
 			checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, sizeof(cl_uint) * 0x100, buffNonce, 0, NULL, NULL));
 			
 			for(int i = 0; i < buffNonce[0xFF]; ++i)
@@ -219,8 +218,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
 				submitter->submitNonce(buffNonce[i], getWork);
 			}
 			
-			nonce += computeUnits * openCLprogramLoops;
-            statDisplay->nonce_count += computeUnits * openCLprogramLoops;
+			nonce += computeUnits * gpuLoops;
+            statDisplay->totalStats->nonce_count += computeUnits * gpuLoops;
             
             if(nonce >= MaxNonce)
             {
@@ -250,7 +249,7 @@ vector<string> cMiner::split(string str, string token) {
 }
 
 
-cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
+cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpuLoops) {
 
     FILE* kernelSourceFile;
     cl_int returnVal;
@@ -292,11 +291,14 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID) {
     // Create kernel program
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
     // Argument #4 here is the arguments to the kernel.
-    returnVal = clBuildProgram(program, 1, deviceID, NULL, NULL, NULL);
+
+    char loopDefine[64];
+    sprintf(loopDefine, "-D GPU_LOOPS=%d", gpuLoops);
+    returnVal = clBuildProgram(program, 1, deviceID, loopDefine, NULL, NULL);
 
 
     
-    if (returnVal == CL_BUILD_PROGRAM_FAILURE) {
+    if (returnVal != CL_SUCCESS) {
         printf("Error building openCL program:\n");
         size_t log_size;
         clGetProgramBuildInfo(program, *deviceID, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);

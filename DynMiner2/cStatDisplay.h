@@ -5,6 +5,7 @@
 #include <atomic>
 #include <string>
 #include <thread>
+#include <map>
 
 #include "version.h"
 
@@ -20,19 +21,28 @@ using namespace std;
 #define SET_COLOR(color)
 #endif
 
-class cStatDisplay
-{
 
+class cStats  {
 public:
-	void displayStats(cSubmitter* submitter, string mode);
-    string seconds_to_uptime(int n);
-
     atomic<uint64_t> nonce_count{};
     atomic<uint64_t> share_count{};
     atomic<uint32_t> accepted_share_count{};
     atomic<uint32_t> rejected_share_count{};
     atomic<uint32_t> latest_diff{};
     uint32_t blockHeight;
+};
+
+class cStatDisplay
+{
+
+public:
+	void displayStats(cSubmitter* submitter, string mode, int hiveos);
+    void addCard(string key);
+
+    string seconds_to_uptime(int n);
+
+    cStats* totalStats;
+    std::map<string, cStats*> perCardStats;
     
     const double tb = 1099511627776;
     const double gb = 1073741824;

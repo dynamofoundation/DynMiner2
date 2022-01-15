@@ -59,6 +59,8 @@ public:
 	atomic<uint32_t> workID;
 	mutex lockJob;
 
+	string miningMode;
+
 	string jobID;
 	uint32_t chainHeight;
 	string prevBlockHashHex;

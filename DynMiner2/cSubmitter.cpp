@@ -184,7 +184,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         rpcSequence++;
 
-        statDisplay->share_count++;
+        statDisplay->totalStats->share_count++;
     }
     else if (minerMode == "solo") {
         getWork->lockJob.lock();
@@ -219,13 +219,13 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
         if (jResult["error"].is_null()) {
             //printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
             getWork->reqNewBlockFlag = true;
-            statDisplay->share_count++;
+            statDisplay->totalStats->share_count++;
             if (jResult["result"] == "high-hash")
-                statDisplay->rejected_share_count++;
+                statDisplay->totalStats->rejected_share_count++;
         }
         else {
             //printf("Submit block failed: %s.\n", jResult["error"]);
-            statDisplay->rejected_share_count++;
+            statDisplay->totalStats->rejected_share_count++;
         }
 
     }
