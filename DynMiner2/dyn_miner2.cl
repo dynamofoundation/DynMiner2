@@ -594,50 +594,11 @@ static inline uint CLZz(uint x)
 #define HASHOP_MEMADDHASHPREV 15
 #define HASHOP_MEMXORHASHPREV 16
 
-
-
-__constant uint AddConsts[8] =
-{
-    0xBB524EDB, 0xA0D2A1C9, 0x30AE0621, 0x92491F82,
-    0xF7569DAB, 0x892814B6, 0x5FA17E37, 0x22BE7B70
-};
-
-__constant uint AddConsts2[8] =
-{
-    0xBB524EDB, 0xA0D2A1C9, 0x30AE0621, 0x92991982,
-    0xF7569DAB, 0x892814B6, 0x5FA17E37, 0x22BE7B70
-};
-
-__constant uint XORConsts[8] =
-{
-    0x124E4358, 0x0615C709, 0x8417434B, 0xD4DDBC5E,
-    0x33E3CD17, 0x17FEB0A9, 0xCA8FA352, 0x3A502E7F
-};
-
-__constant uint XORConsts2[8] =
-{
-    0x124E4358, 0x0615C709, 0x8417434B, 0x9499BC5E,
-    0x33E3CD17, 0x17FEB0A9, 0xCA8FA352, 0x3A502E7F
-};
-
-__constant uint MemDataConsts[8] =
-{
-    0xA63FB75F, 0x4A42DCC2, 0x86DA33C7, 0x4DC1206B,
-    0x3D079D17, 0x632048D6, 0x441EE458, 0x0AE604BA
-};
-
-
 #define SWAP32(x)	as_uint(as_uchar4(x).s3210)
-
-
-
 
 __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* NonceRetBuf, const ulong target, __global uint* global_memgen) {
     
     int computeUnitID = get_global_id(0) - get_global_offset(0);
-
-    //uint GPU_LOOPS;
-    //GPU_LOOPS = 8;
 
     __global uint* hostHashResult = &hashResult[computeUnitID * 8];
 
@@ -659,7 +620,9 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     uint prevHashSHA[8];
     sha256(32, &myHeader[1], prevHashSHA);
 
-       
+    __global uint* myMemGen = &global_memgen[computeUnitID * 512 * 8];
+    uint tempStore[8];
+    
     
     uint hashCount = 0;
     while (hashCount < GPU_LOOPS) {
@@ -675,8 +638,6 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
             uint loop_opcode_count;
             uint loop_line_ptr;
 
-            __global uint *myMemGen = &global_memgen[computeUnitID * 512 * 8];
-            uint tempStore[8];
 
             while (1) {
 

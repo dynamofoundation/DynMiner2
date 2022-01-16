@@ -8,6 +8,8 @@ void cSubmitter::submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay,
     statDisplay = iStatDisplay;
     minerMode = mode;
 
+    return;
+
     while (getWork->workID == 0)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -145,7 +147,7 @@ unsigned int cSubmitter::countLeadingZeros(unsigned char* hash) {
 
 
 void cSubmitter::submitNonceThread(cGetWork* getWork) {
-
+    
     while (true) {
         nonceListLock.lock();
         if (!nonceList.empty()) {
