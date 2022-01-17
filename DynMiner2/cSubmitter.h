@@ -63,6 +63,8 @@ public:
 	cStatDisplay* statDisplay;
 
 	string minerMode;
+	string statURL;
+	string minerName;
 
 	CURL* curl;
 	CURLcode res;

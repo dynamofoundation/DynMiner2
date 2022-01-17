@@ -34,6 +34,8 @@
 using namespace std;
 
 string minerMode;       //solo or stratum
+string statURL;
+string minerName;
 int stratumSocket;      //tcp connected socket for stratum mode
 
 multimap<string, string> commandArgs;
@@ -109,6 +111,8 @@ void showUsage(const char* message) {
     printf("  -wallet <wallet address>   [only used for solo]\n");
     printf("  -miner <miner params>\n");
     printf("  -hiveos [0|1]   [optional, if 1 will format output for hiveos]\n");
+    printf("  -statrpcurl <URL to send stats to> [optional]\n");
+    printf("  -minername <display name of miner> [required with statrpcurl]\n");
     printf("\n");
     printf("<miner params> format:\n");
     printf("  [CPU|GPU],<cores or compute units>[<work size>,<platform id>,<device id>[,<loops>]]\n");
@@ -147,6 +151,20 @@ void parseCommandArgs(int argc, char* argv[]) {
         if (modeTypes.find(mode) == modeTypes.end())
             showUsage("Invalid MODE argument");
         minerMode = mode;
+    }
+
+    if (commandArgs.find("-statrpcurl") != commandArgs.end()) {
+        multimap<string, string>::iterator it = commandArgs.find("-statrpcurl");
+        statURL = it->second;
+        if (commandArgs.find("-minername") == commandArgs.end())
+            showUsage("-minername is required when using -statrpcurl");
+
+        printf("Sending stats to URL: %s \n", statURL.c_str());
+    }
+
+    if (commandArgs.find("-minername") != commandArgs.end()) {
+        multimap<string, string>::iterator it = commandArgs.find("-minername");
+        minerName = it->second;
     }
 
     if (commandArgs.find("-server") == commandArgs.end())
@@ -204,7 +222,7 @@ void startSubmitter() {
 
 void startStatDisplay() {
  
-    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter, minerMode, rpcConfigParams.hiveos);
+    thread statThread(&cStatDisplay::displayStats, statDisplay, submitter, minerMode, rpcConfigParams.hiveos, statURL, minerName);
     statThread.detach();
 }
 
