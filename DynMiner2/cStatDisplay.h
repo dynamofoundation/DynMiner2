@@ -45,8 +45,6 @@ public:
     void addCard(string key);
 
     string seconds_to_uptime(int n);
-    CURL* curl;
-    CURLcode res;
 
     cStats* totalStats;
     std::map<string, cStats*> perCardStats;

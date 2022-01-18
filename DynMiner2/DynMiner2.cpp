@@ -159,13 +159,14 @@ void parseCommandArgs(int argc, char* argv[]) {
         if (commandArgs.find("-minername") == commandArgs.end())
             showUsage("-minername is required when using -statrpcurl");
 
-        printf("Sending stats to URL: %s \n", statURL.c_str());
+        if (commandArgs.find("-minername") != commandArgs.end()) {
+            multimap<string, string>::iterator it = commandArgs.find("-minername");
+            minerName = it->second;
+        }
+
+        printf("Sending stats to URL: %s using miner name %s\n", statURL.c_str(), minerName.c_str());
     }
 
-    if (commandArgs.find("-minername") != commandArgs.end()) {
-        multimap<string, string>::iterator it = commandArgs.find("-minername");
-        minerName = it->second;
-    }
 
     if (commandArgs.find("-server") == commandArgs.end())
         showUsage("Missing argument: server");

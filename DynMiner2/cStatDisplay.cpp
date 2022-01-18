@@ -38,6 +38,8 @@ void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos, 
 
     time_t now;
     time_t start;
+    CURL* curl;
+    CURLcode res;
 
     time(&start);
 
