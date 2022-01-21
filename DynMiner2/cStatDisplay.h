@@ -13,8 +13,13 @@ class cSubmitter;
 
 using namespace std;
 
+#ifdef __linux__
+#include "curl/curl.h"
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
+#include <curl\curl.h>
 #define SET_COLOR(color) SetConsoleTextAttribute(hConsole, color);
 #include "Windows.h"
 #else
@@ -36,7 +41,7 @@ class cStatDisplay
 {
 
 public:
-	void displayStats(cSubmitter* submitter, string mode, int hiveos);
+	void displayStats(cSubmitter* submitter, string mode, int hiveos, string statURL, string minerName);
     void addCard(string key);
 
     string seconds_to_uptime(int n);
