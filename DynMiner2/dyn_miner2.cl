@@ -627,7 +627,9 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     uint hashCount = 0;
     while (hashCount < GPU_LOOPS) {
 
+
             sha256(80, myHeader, myHashResult);
+
 
 
             uint linePtr = 0;
@@ -640,6 +642,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
 
             while (1) {
+
 
                 if (byteCode[linePtr] == HASHOP_ADD) {
                     linePtr++;

@@ -43,8 +43,13 @@ void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter,
             gpuLoops = atoi(vParams[5].c_str());
         startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex, gpuLoops);
     }
-    else
-        printf("CPU miner not implemented\n");
+    else {
+        uint32_t startNonce = 0xFFFFFFFF / numThread;
+        for (unsigned int i = 0; i < numThread; i++) {
+            thread minerThread(&cMiner::startCPUMiner, this, getWork, submitter, statDisplay, i, i * startNonce);
+            minerThread.detach();
+        }
+    }
 
 
 }
@@ -93,6 +98,297 @@ static void checkReturn(const char* call, int val) {
         printf("OPENCL error %d calling %s\n.", val, call);
         exit(0);
     }
+}
+
+void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDisplay* statDisplay, int cpuIndex, unsigned int startNonce) {
+    bool workReady = false;
+    while (!workReady) {
+        getWork->lockJob.lock();
+        workReady = (getWork->workID != 0);
+        getWork->lockJob.unlock();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+
+    unsigned char* buffHeader = (unsigned char*) malloc(80);
+
+    printf("%d\n", startNonce);
+
+    char cKey[32];
+    sprintf(cKey, "CPU%d", cpuIndex );
+    string sKey = string::basic_string(cKey);
+    statDisplay->addCard(sKey);
+
+    CSHA256 sha256;
+
+    while (true) {
+        int workID;
+
+        getWork->lockJob.lock();
+
+        workID = getWork->workID;
+        string jobID = getWork->jobID;
+        memcpy(buffHeader, getWork->nativeData, 80);
+
+        uint64_t target;
+        if (getWork->miningMode == "solo")
+            target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
+        else
+            target = share_to_target(getWork->difficultyTarget) * 65536;
+
+        std::vector<unsigned int> program = getWork->programVM->byteCode;
+
+        getWork->lockJob.unlock();
+
+        uint32_t nonce = startNonce;
+        unsigned char hash[32];
+
+        while (workID == getWork->workID) {
+            memcpy(&buffHeader[76], &nonce, 4);
+
+            runProgram(buffHeader, program, (unsigned int*)hash, sha256);
+            uint64_t hash_int{};
+            memcpy(&hash_int, hash, 8);
+            hash_int = htobe64(hash_int);
+            if (hash_int < target) 
+                submitter->submitNonce(nonce, getWork);
+            
+            nonce++;
+            statDisplay->totalStats->nonce_count++;
+        }
+    }
+}
+
+
+void sha256(unsigned int len, unsigned char* data, unsigned char* output, CSHA256 sha256) {
+    sha256.Reset();
+    sha256.Write(data, len);
+    sha256.Finalize(output);
+}
+
+void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteCode, unsigned int* myHashResult, CSHA256 _sha256) {
+
+
+
+    uint32_t myMemGen[512 * 8];
+    uint32_t tempStore[8];
+
+    uint32_t prevHashSHA[8];
+    sha256(32, &myHeader[1], (unsigned char*)prevHashSHA, _sha256);
+
+    sha256(80, myHeader, (unsigned char*)myHashResult, _sha256);
+
+    uint32_t linePtr = 0;
+    uint32_t done = 0;
+    uint32_t currentMemSize = 0;
+    uint32_t instruction = 0;
+
+    uint32_t loop_opcode_count;
+    uint32_t loop_line_ptr;
+
+
+    while (1) {
+       
+
+        if (byteCode[linePtr] == HASHOP_ADD) {
+            linePtr++;
+            for (int i = 0; i < 8; i++)
+                myHashResult[i] += byteCode[linePtr + i];
+            linePtr += 8;
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_XOR) {
+            linePtr++;
+            for (int i = 0; i < 8; i++)
+                myHashResult[i] ^= byteCode[linePtr + i];
+            linePtr += 8;
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_SHA_SINGLE) {
+            sha256(32, (unsigned char*)myHashResult, (unsigned char*)myHashResult, _sha256);
+            linePtr++;
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_SHA_LOOP) {
+            linePtr++;
+            uint32_t loopCount = byteCode[linePtr];
+            for (int i = 0; i < loopCount; i++) {
+                sha256(32, (unsigned char*)myHashResult, (unsigned char*)myHashResult, _sha256);
+            }
+            linePtr++;
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_MEMGEN) {
+            linePtr++;
+
+            currentMemSize = byteCode[linePtr];
+
+            for (int i = 0; i < currentMemSize; i++) {
+                sha256(32, (unsigned char*)myHashResult, (unsigned char*)myHashResult, _sha256);
+                for (int j = 0; j < 8; j++)
+                    myMemGen[i * 8 + j] = myHashResult[j];
+            }
+
+
+            linePtr++;
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_MEMADD) {
+            linePtr++;
+
+            for (int i = 0; i < currentMemSize; i++)
+                for (int j = 0; j < 8; j++)
+                    myMemGen[i * 8 + j] += byteCode[linePtr + j];
+
+            linePtr += 8;
+        }
+
+        else if (byteCode[linePtr] == HASHOP_MEMADDHASHPREV) {
+            linePtr++;
+
+            for (int i = 0; i < currentMemSize; i++)
+                for (int j = 0; j < 8; j++) {
+                    myMemGen[i * 8 + j] += myHashResult[j] + prevHashSHA[j];
+                }
+
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_MEMXOR) {
+            linePtr++;
+
+            for (int i = 0; i < currentMemSize; i++)
+                for (int j = 0; j < 8; j++)
+                    myMemGen[i * 8 + j] ^= byteCode[linePtr + j];
+
+            linePtr += 8;
+        }
+
+        else if (byteCode[linePtr] == HASHOP_MEMXORHASHPREV) {
+            linePtr++;
+
+            for (int i = 0; i < currentMemSize; i++)
+                for (int j = 0; j < 8; j++) {
+                    myMemGen[i * 8 + j] += myHashResult[j];
+                    myMemGen[i * 8 + j] ^= prevHashSHA[j];
+                }
+
+        }
+
+
+        else if (byteCode[linePtr] == HASHOP_MEM_SELECT) {
+            linePtr++;
+            uint32_t index = byteCode[linePtr] % currentMemSize;
+            for (int j = 0; j < 8; j++)
+                myHashResult[j] = myMemGen[index * 8 + j];
+
+            linePtr++;
+        }
+
+        else if (byteCode[linePtr] == HASHOP_READMEM2) {
+            linePtr++;
+            if (byteCode[linePtr] == 0) {
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] ^= prevHashSHA[i];
+            }
+            else if (byteCode[linePtr] == 1) {
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] += prevHashSHA[i];
+            }
+
+            linePtr++;  //this is the source, only supports prev hash currently
+
+            uint32_t index = 0;
+            for (int i = 0; i < 8; i++)
+                index += myHashResult[i];
+
+
+            index = index % currentMemSize;
+
+            for (int j = 0; j < 8; j++)
+                myHashResult[j] = myMemGen[index * 8 + j];
+
+            linePtr++;
+
+        }
+
+        else if (byteCode[linePtr] == HASHOP_LOOP) {
+            loop_opcode_count = 0;
+            for (int j = 0; j < 8; j++)
+                loop_opcode_count += myHashResult[j];
+
+            linePtr++;
+            loop_opcode_count = loop_opcode_count % byteCode[linePtr] + 1;
+
+            linePtr++;
+            loop_line_ptr = linePtr;        //line to return to after endloop
+        }
+
+        else if (byteCode[linePtr] == HASHOP_ENDLOOP) {
+            linePtr++;
+            loop_opcode_count--;
+            if (loop_opcode_count > 0)
+                linePtr = loop_line_ptr;
+        }
+
+        else if (byteCode[linePtr] == HASHOP_IF) {
+            linePtr++;
+            uint32_t sum = 0;
+            for (int j = 0; j < 8; j++)
+                sum += myHashResult[j];
+            sum = sum % byteCode[linePtr];
+            linePtr++;
+            uint32_t numToSkip = byteCode[linePtr];
+            linePtr++;
+            if (sum == 0) {
+                linePtr += numToSkip;
+            }
+        }
+
+        else if (byteCode[linePtr] == HASHOP_STORETEMP) {
+            for (int j = 0; j < 8; j++)
+                tempStore[j] = myHashResult[j];
+
+            linePtr++;
+        }
+
+        else if (byteCode[linePtr] == HASHOP_EXECOP) {
+            linePtr++;
+            //next byte is source  (hard coded to temp)
+            linePtr++;
+
+            uint32_t sum = 0;
+            for (int j = 0; j < 8; j++)
+                sum += myHashResult[j];
+
+            if (sum % 3 == 0) {
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] += tempStore[i];
+            }
+
+            else if (sum % 3 == 1) {
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] ^= tempStore[i];
+            }
+
+            else if (sum % 3 == 2) {
+                sha256(32, (unsigned char*)myHashResult, (unsigned char*)myHashResult, _sha256);
+            }
+
+        }
+
+        else if (byteCode[linePtr] == HASHOP_END) {
+            break;
+        }
+
+    }
+
+
 }
 
 void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops) {
