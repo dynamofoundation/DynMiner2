@@ -1,5 +1,6 @@
 #include "cStatDisplay.h"
 #include "cSubmitter.h"
+#include <iostream>
 
 string cStatDisplay::seconds_to_uptime(int n) {
     int days = n / (24 * 3600);
@@ -31,12 +32,14 @@ string cStatDisplay::seconds_to_uptime(int n) {
     return (uptimeString);
 }
 
-void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos) {
+void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos, string statURL, string minerName) {
 
     totalStats = new cStats();
 
     time_t now;
     time_t start;
+    CURL* curl;
+    CURLcode res;
 
     time(&start);
 
@@ -73,6 +76,40 @@ void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos) 
                 sprintf(display, "%.2f H/s", hashrate);
 
             std::string uptime = seconds_to_uptime(difftime(now, start));
+
+	    if (!statURL.empty()) {
+
+	        curl = curl_easy_init();
+	        curl_easy_setopt(curl, CURLOPT_URL, statURL.c_str());
+
+	        string hashStr = to_string(int(hashrate));
+
+	        char postString[320];
+
+	        sprintf(postString, R"(
+	                    {
+			     "Name": "%s",
+			     "Hashrate": %s,
+			     "Submit": %4lu,
+			     "Accept": %-4d,
+			     "Reject": %4d,
+			     "Diff": %-4d
+			    }
+					  )",
+			minerName.c_str(), hashStr.c_str(),
+                totalStats->share_count.load(std::memory_order_relaxed), totalStats->accepted_share_count.load(std::memory_order_relaxed),
+                totalStats->rejected_share_count.load(std::memory_order_relaxed), totalStats->latest_diff.load(std::memory_order_relaxed));
+
+		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postString);
+
+		res = curl_easy_perform(curl);
+
+		if (res != CURLE_OK)
+		    fprintf(stderr, "Unable to connect to stat reporting ip: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl);
+
+	    }
 
             SET_COLOR(LIGHTBLUE);
             printf("%s: ", timestamp);
