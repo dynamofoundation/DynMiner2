@@ -627,6 +627,15 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     uint hashCount = 0;
     while (hashCount < GPU_LOOPS) {
 
+        /*
+        if (get_global_id(0) != 0)
+            return;
+
+        unsigned char* hh = myHeader;
+        for (int i = 0; i < 80; i++)
+            printf("%02X", hh[i]);
+        printf("\n");
+        */
 
             sha256(80, myHeader, myHashResult);
 
@@ -643,6 +652,16 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
             while (1) {
 
+                printf("%08X%08X%08X%08X%08X%08X%08X%08X",
+                    myHashResult[0],
+                    myHashResult[1],
+                    myHashResult[2],
+                    myHashResult[3],
+                    myHashResult[4],
+                    myHashResult[5],
+                    myHashResult[6],
+                    myHashResult[7]
+                    );
 
                 if (byteCode[linePtr] == HASHOP_ADD) {
                     linePtr++;

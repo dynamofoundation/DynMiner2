@@ -112,11 +112,12 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
 
     unsigned char* buffHeader = (unsigned char*) malloc(80);
 
-    printf("%d\n", startNonce);
+    //printf("%d\n", startNonce);
 
     char cKey[32];
     sprintf(cKey, "CPU%d", cpuIndex );
-    string sKey = string::basic_string(cKey);
+    //string sKey = string::basic_string(cKey);
+    basic_string<char> sKey(cKey);
     statDisplay->addCard(sKey);
 
     CSHA256 sha256;
@@ -130,6 +131,8 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
         string jobID = getWork->jobID;
         memcpy(buffHeader, getWork->nativeData, 80);
 
+
+        //int numZero = countLeadingZeros()
         uint64_t target;
         if (getWork->miningMode == "solo")
             target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
@@ -169,12 +172,13 @@ void sha256(unsigned int len, unsigned char* data, unsigned char* output, CSHA25
 void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteCode, unsigned int* myHashResult, CSHA256 _sha256) {
 
 
+    //hex2bin(myHeader, "40000000000000023864150D435518426A0E938EA34A6D3483AC82F08EBD19DE9498B8B8B828786343EAE185A6DD8F807831494C30C58A6B1A0D4B45B5462E378A2BD235C63EEC619694051D00000000", 80);
 
     uint32_t myMemGen[512 * 8];
     uint32_t tempStore[8];
 
     uint32_t prevHashSHA[8];
-    sha256(32, &myHeader[1], (unsigned char*)prevHashSHA, _sha256);
+    sha256(32, &myHeader[4], (unsigned char*)prevHashSHA, _sha256);
 
     sha256(80, myHeader, (unsigned char*)myHashResult, _sha256);
 
@@ -189,6 +193,11 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
 
     while (1) {
        
+        /*
+        for (int i = 0; i < 8; i++)
+            printf("%08X", myHashResult[i]);
+        printf("\n");
+        */
 
         if (byteCode[linePtr] == HASHOP_ADD) {
             linePtr++;
@@ -464,7 +473,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
 
     char cKey[32];
     sprintf(cKey, "%02d:%02d.0", platformID, deviceID);
-    string sKey = string::basic_string(cKey);
+    //string sKey = string::basic_string(cKey);
+    basic_string<char> sKey(cKey);
     statDisplay->addCard(sKey);
 
     while (true) {
