@@ -652,6 +652,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
             while (1) {
 
+                /*
                 printf("%08X%08X%08X%08X%08X%08X%08X%08X",
                     myHashResult[0],
                     myHashResult[1],
@@ -662,6 +663,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     myHashResult[6],
                     myHashResult[7]
                     );
+                    */
 
                 if (byteCode[linePtr] == HASHOP_ADD) {
                     linePtr++;
