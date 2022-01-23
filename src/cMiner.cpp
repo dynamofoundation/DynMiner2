@@ -563,7 +563,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpu
 
     kernelSourceFile = fopen("dyn_miner2.cl", "r");
     if (!kernelSourceFile) {
-        fprintf(stderr, "Failed to load openCL kernel.\n");
+        fprintf(stderr, "Failed to load OpenCL kernel.\n");
         exit(0);
     }
     fseek(kernelSourceFile, 0, SEEK_END);
