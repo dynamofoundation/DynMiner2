@@ -155,7 +155,7 @@ void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos, 
             }
 
             SET_COLOR(LIGHTMAGENTA);
-            printf("DynMiner %s\n", MINER_VERSION);
+            printf("DynMiner " MINER_VERSION "\n");
             SET_COLOR(LIGHTGRAY);
         }
     }
