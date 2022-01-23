@@ -239,6 +239,8 @@ json cSubmitter::execRPC(string data) {
 
     chunk.size = 0;
 
+    curl = curl_easy_init();
+
     curl_easy_setopt(curl, CURLOPT_URL, rpcURL.c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPAUTH, (long)CURLAUTH_BASIC);
     curl_easy_setopt(curl, CURLOPT_USERNAME, rpcUser.c_str());
@@ -252,11 +254,11 @@ json cSubmitter::execRPC(string data) {
     res = curl_easy_perform(curl);
 
     if (res != CURLE_OK)
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        fprintf(stderr, "execRPC(%s): curl_easy_perform() failed: %s\n", data.c_str(), curl_easy_strerror(res));
 
     json result = json::parse(chunk.memory);
 
-
+    curl_easy_cleanup(curl);
 
     return result;
 }
