@@ -20,6 +20,6 @@ make -j4
 Example:
 
 ```
-./dyn_miner2 -mode stratum -server web.letshash.it -port 5966 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdxxxxxxxxxx -pass d=2 -miner GPU,16384,128,0,1
+./dyn_miner2 -mode stratum -server web.letshash.it -port 5966 -user dy1qyc3lkpe8ysns5z65u3t5j0remfpdxxxxxxxxxx -pass d=2 -miner GPU,16384,128,0,0
 ```
 
