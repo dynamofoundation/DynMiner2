@@ -3,6 +3,7 @@
 #include "cSubmitter.h"
 #include "cStatDisplay.h"
 #include "cProgramVM.h"
+#include "xxd.h"
 
 uint64_t BSWAP64(uint64_t x)
 {
@@ -557,25 +558,11 @@ vector<string> cMiner::split(string str, string token) {
 
 cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpuLoops) {
 
-    FILE* kernelSourceFile;
     cl_int returnVal;
 
-
-    kernelSourceFile = fopen("dyn_miner2.cl", "r");
-    if (!kernelSourceFile) {
-        fprintf(stderr, "Failed to load OpenCL kernel.\n");
-        exit(0);
-    }
-    fseek(kernelSourceFile, 0, SEEK_END);
-    size_t sourceFileLen = ftell(kernelSourceFile) + 1;
-    char* kernelSource = (char*)malloc(sourceFileLen);
-    memset(kernelSource, 0, sourceFileLen);
-    fseek(kernelSourceFile, 0, SEEK_SET);
-    size_t numRead = fread(kernelSource, 1, sourceFileLen, kernelSourceFile);
-    fclose(kernelSourceFile);
+    const char* kernelSource = xxd::get("opencl_kernel");
 
     cl_program program;
-
 
     char versionLine[256];
     sprintf(versionLine, "#define VERSION %s", MINER_VERSION);
@@ -595,6 +582,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpu
 #endif
 
     // Create kernel program
+    size_t numRead = 0;
     program = clCreateProgramWithSource(context, 1, (const char**)&kernelSource, &numRead, &returnVal);
     // Argument #4 here is the arguments to the kernel.
 
@@ -605,7 +593,7 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpu
 
     
     if (returnVal != CL_SUCCESS) {
-        printf("Error building openCL program:\n");
+        printf("Error building OpenCL program:\n");
         size_t log_size;
         clGetProgramBuildInfo(program, *deviceID, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
         char* log = (char*)malloc(log_size);
@@ -614,9 +602,5 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpu
         exit(0);
     }
     
-
-    free(kernelSource);
-
     return program;
-
 }

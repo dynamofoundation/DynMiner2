@@ -1,0 +1,3 @@
+[submodule "ThirdParty/xxd"]
+	path = ThirdParty/xxd
+	url = https://github.com/dmikushin/xxd.git
