@@ -107,10 +107,10 @@ void showUsage(const char* message) {
     printf("USAGE\n");
     printf("dynminer2 \n");
     printf("  -mode [solo|stratum|pool]\n");
-    printf("  -server <rpc server URL or stratum IP>\n");
-    printf("  -port <rpc port>  [only used for stratum]\n");
+    printf("  -server <rpc server URL or stratum/pool IP>\n");
+    printf("  -port <rpc port>  [only used for stratum and pool]\n");
     printf("  -user <username>\n");
-    printf("  -pass <password>\n");
+    printf("  -pass <password>  [used only for solo and stratum]\n");
     printf("  -diff <initial difficulty>  [optional]\n");
     printf("  -wallet <wallet address>   [only used for solo]\n");
     printf("  -miner <miner params>\n");
@@ -177,7 +177,7 @@ void parseCommandArgs(int argc, char* argv[]) {
     else
         rpcConfigParams.server = commandArgs.find("-server")->second;
 
-    if (minerMode == "stratum") {
+    if ((minerMode == "stratum") || (minerMode == "pool")) {
         if (commandArgs.find("-port") == commandArgs.end())
             showUsage("Missing argument: port");
         else
@@ -189,13 +189,15 @@ void parseCommandArgs(int argc, char* argv[]) {
     else
         rpcConfigParams.user = commandArgs.find("-user")->second;
 
-    if (commandArgs.find("-pass") == commandArgs.end())
-        showUsage("Missing argument: pass");
-    else
-        rpcConfigParams.pass = commandArgs.find("-pass")->second;
+    if (minerMode != "pool") {
+        if (commandArgs.find("-pass") == commandArgs.end())
+            showUsage("Missing argument: pass");
+        else
+            rpcConfigParams.pass = commandArgs.find("-pass")->second;
+    }
 
 
-    if (minerMode != "stratum") {
+    if ((minerMode != "stratum") && (minerMode != "pool")) {
         if (commandArgs.find("-wallet") == commandArgs.end())
             showUsage("Missing argument: wallet");
         else
@@ -329,6 +331,18 @@ void authorizeStratum() {
     }
 }
 
+
+
+
+void authorizePool() {
+    char buf[4096];
+    sprintf(buf, "{\"command\": \"auth\", \"data\": \"%s\"}\n", rpcConfigParams.user.c_str());
+    int numSent = send(stratumSocket, buf, strlen(buf), 0);
+    if (numSent < 0) {
+        printf("Error on authentication\n");        //todo - I'm not sure this is 100% true
+    }
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -348,6 +362,13 @@ int main(int argc, char* argv[])
         authorizeStratum();
     }
 
+    if (minerMode == "pool") {
+        initWinsock();
+        if (!connectToStratum())    //same logic as stratum to connect to pool
+            exit(0);
+        authorizePool();
+    }
+
     statDisplay = new cStatDisplay();
     getWork = new cGetWork();
     submitter = new cSubmitter();
@@ -359,7 +380,7 @@ int main(int argc, char* argv[])
     startMiners();
 
     while (true) {
-        if (minerMode == "stratum") {
+        if ((minerMode == "stratum") || (minerMode == "pool")) {
             if (socketError) {
                 printf("Socket error\nInitiating restart\n\n");
 
@@ -369,7 +390,7 @@ int main(int argc, char* argv[])
                     miners[i]->pause = true;
                 std::this_thread::sleep_for(std::chrono::seconds(3));
 
-                printf("Reconnecting to stratum...\n");
+                printf("Reconnecting to stratum/pool...\n");
                 while (!connectToStratum())
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                 authorizeStratum();

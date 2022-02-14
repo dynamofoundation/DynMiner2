@@ -38,8 +38,10 @@ void cGetWork::getWork(string mode, int stratumSocket, cStatDisplay* statDisplay
 
 	if (mode == "stratum")
 		startStratumGetWork(stratumSocket, statDisplay);
-	else if (mode == "solo")
-		startSoloGetWork(statDisplay);
+    else if (mode == "solo")
+        startSoloGetWork(statDisplay);
+    else if (mode == "pool")
+        startPoolGetWork(stratumSocket, statDisplay);
 }
 
 void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
@@ -246,6 +248,87 @@ void cGetWork::setJobDetailsStratum(json msg) {
 
 	lockJob.unlock();
 }
+
+
+void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
+    std::vector<char> buffer;
+    uint32_t extraNonce;
+
+    while (true) {
+        const int tmpBuffLen = 4096;
+        char tmpBuff[tmpBuffLen];
+        memset(tmpBuff, 0, tmpBuffLen);
+        int numRecv = recv(stratumSocket, tmpBuff, tmpBuffLen, 0);
+        if (numRecv > 0)
+            for (int i = 0; i < numRecv; i++)
+                buffer.push_back(tmpBuff[i]);
+
+
+        //TODO - evaluate memory leaks due to return - might need a ~cGetWork
+        if (numRecv < 0) {
+            *socketError = true;
+            return;
+        }
+
+        if (*socketError)        //if submitter flags error on send
+            return;
+
+        if (buffer.size() > 0) {
+            string line;
+            while (readLine(buffer, line)) {
+                json msg = json::parse(line.c_str());
+                const json& id = msg["id"];
+                if (id.is_null()) {
+                    const std::string& method = msg["method"];
+                    if (method == "block_data") {
+                        setJobDetailsSolo(msg["data"], extraNonce);
+                    }
+                    else if (method == "set_difficulty") {
+                        difficultyTarget = msg["data"];
+                        statDisplay->totalStats->latest_diff.store(difficultyTarget);
+                    }
+                    else if (method == "set_extranonce") {
+                        extraNonce = msg["data"];
+                    }
+                    else {
+                        printf("Unknown pool method %s\n", method.data());
+                    }
+                }
+                else {
+                    const std::string& resp = id;
+                    if (resp == "auth") {
+                        const bool result = msg["result"];
+                        if (!result) {
+                            printf("Failed authentication\n");
+                        }
+                    }
+                    else {
+                        const bool result = msg["result"];
+                        if (!result) {
+                            const std::vector<json>& error = msg["error"];
+                            const int code = error[0];
+                            const std::string& message = error[1];
+                            printf("%s\n", message.c_str());
+                            statDisplay->totalStats->rejected_share_count++;
+                            ///////printf("Error (%s): %s (code: %d)\n", resp.c_str(), message.c_str(), code);
+                            ////////////miner.shares.stats.rejected_share_count++;
+                        }
+                        else {
+                            statDisplay->totalStats->accepted_share_count++;
+                            ///printf("accepted\n");
+                            ////////////miner.shares.stats.accepted_share_count++;
+                        }
+                    }
+                }
+
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    }
+}
+
 
 json cGetWork::execRPC(string data) {
 

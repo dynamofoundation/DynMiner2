@@ -50,6 +50,7 @@ public:
 	void setJobDetailsSolo(json msg, uint32_t extranonce);
 	void startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay);
 	void startSoloGetWork(cStatDisplay* statDisplay);
+	void startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay);
 	json execRPC(string data);
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 

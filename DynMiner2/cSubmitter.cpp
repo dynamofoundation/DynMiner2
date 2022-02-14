@@ -235,6 +235,43 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
         }
 
     }
+
+    else if (minerMode == "pool") {
+        getWork->lockJob.lock();
+
+        unsigned char header[80];
+        memcpy(header, getWork->nativeData, 80);
+
+        memcpy(header + 76, &nonce, 4);
+
+
+        for (int i = 0; i < 16; i++) {
+            unsigned char swap = header[4 + i];
+            header[4 + i] = header[35 - i];
+            header[35 - i] = swap;
+        }
+
+        std::string strBlock;
+
+        char hexHeader[256];
+        bin2hex(hexHeader, header, 80);
+        strBlock += std::string(hexHeader);
+        strBlock += getWork->transactionString;
+
+        getWork->lockJob.unlock();
+
+        string data = "{ \"command\" : \"submit\", \"data\" : \"" + strBlock + "\" }\n";        
+
+        int len = data.length();
+        int sent = 0;
+        while ((sent < len) && (!socketError)) {
+            int numSent = send(*stratumSocket, data.c_str() + sent, len, 0);
+            if (numSent <= 0)
+                *socketError = true;
+            else
+                sent += numSent;
+        }
+    }
     
 }
 
