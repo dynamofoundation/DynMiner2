@@ -99,6 +99,16 @@ void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay)
             for (int i = 0; i < numRecv; i++)
                 buffer.push_back(tmpBuff[i]);
 
+
+        //TODO - evaluate memory leaks due to return - might need a ~cGetWork
+        if (numRecv < 0) {
+            *socketError = true;
+            return;
+        }
+
+        if (*socketError)        //if submitter flags error on send
+            return;
+
         if (buffer.size() > 0) {
             string line;
 			while (readLine(buffer, line)) {
@@ -189,8 +199,6 @@ void cGetWork::setJobDetailsStratum(json msg) {
 	}
 
 	// Version
-
-
 
 	nativeData[0] = 0x40;
 	nativeData[1] = 0x00;

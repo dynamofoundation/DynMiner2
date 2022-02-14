@@ -57,8 +57,9 @@ public:
 	mutex nonceListLock;
 	vector<cNonceEntry*> nonceList;
 
-	int stratumSocket;
+	int* stratumSocket;
 	int rpcSequence;
+	int* socketError;
 
 	cStatDisplay* statDisplay;
 

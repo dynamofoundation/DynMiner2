@@ -60,6 +60,7 @@ public:
 	mutex lockJob;
 
 	string miningMode;
+	int* socketError;
 
 	string jobID;
 	uint32_t chainHeight;

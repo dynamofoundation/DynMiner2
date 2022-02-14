@@ -48,4 +48,6 @@ public:
 	cl_kernel kernel;
 	cl_command_queue commandQueue;
 
+	bool pause;
+
 };

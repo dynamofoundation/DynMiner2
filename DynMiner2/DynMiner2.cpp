@@ -37,11 +37,15 @@ string minerMode;       //solo or stratum
 string statURL;
 string minerName;
 int stratumSocket;      //tcp connected socket for stratum mode
+int socketError;        //global var to detect socket errors
+
 
 multimap<string, string> commandArgs;
 cStatDisplay* statDisplay;
 cGetWork* getWork;
 cSubmitter* submitter;
+
+vector<cMiner*> miners;
 
 struct sRpcConfigParams {
     string server;
@@ -102,7 +106,7 @@ void showUsage(const char* message) {
 
     printf("USAGE\n");
     printf("dynminer2 \n");
-    printf("  -mode [solo|stratum]\n");
+    printf("  -mode [solo|stratum|pool]\n");
     printf("  -server <rpc server URL or stratum IP>\n");
     printf("  -port <rpc port>  [only used for stratum]\n");
     printf("  -user <username>\n");
@@ -147,7 +151,7 @@ void parseCommandArgs(int argc, char* argv[]) {
         multimap<string, string>::iterator it = commandArgs.find("-mode");
         string mode = it->second;
         transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-        set<string> modeTypes = { "solo", "stratum" };
+        set<string> modeTypes = { "solo", "stratum", "pool"};
         if (modeTypes.find(mode) == modeTypes.end())
             showUsage("Invalid MODE argument");
         minerMode = mode;
@@ -212,13 +216,17 @@ void parseCommandArgs(int argc, char* argv[]) {
 
 
 void startSubmitter() {
-    thread submitThread(&cSubmitter::submitEvalThread, submitter, getWork, statDisplay, minerMode);
-    submitThread.detach();
-    submitter->stratumSocket = stratumSocket;
+    submitter->stratumSocket = &stratumSocket;
     submitter->rpcURL = rpcConfigParams.server;
     submitter->rpcUser = rpcConfigParams.user;
     submitter->rpcPassword = rpcConfigParams.pass;
     submitter->rpcWallet = rpcConfigParams.wallet;
+
+    socketError = false;
+    submitter->socketError = &socketError;
+
+    thread submitThread(&cSubmitter::submitEvalThread, submitter, getWork, statDisplay, minerMode);
+    submitThread.detach();
 }
 
 void startStatDisplay() {
@@ -228,14 +236,18 @@ void startStatDisplay() {
 }
 
 void startGetWork() {
-    
-    thread workThread(&cGetWork::getWork, getWork, minerMode, stratumSocket, statDisplay);
-    workThread.detach();
 
     getWork->rpcURL = rpcConfigParams.server;
     getWork->rpcUser = rpcConfigParams.user;
     getWork->rpcPassword = rpcConfigParams.pass;
     getWork->rpcWallet = rpcConfigParams.wallet;
+
+    socketError = false;
+    getWork->socketError = &socketError;
+
+    thread workThread(&cGetWork::getWork, getWork, minerMode, stratumSocket, statDisplay);
+    workThread.detach();
+
 
 }
 
@@ -246,10 +258,14 @@ void startOneMiner(std::string params, uint32_t GPUIndex) {
     cMiner *miner = new cMiner();
     thread minerThread(&cMiner::startMiner, miner, params, getWork, submitter, statDisplay, GPUIndex);
     minerThread.detach();
+
+    miners.push_back(miner);
 }
 
 
 void startMiners() {
+    miners.clear();
+
 	uint32_t GPUIndex = 0;
     pair<multimap<string, string>::iterator, multimap<string, string>::iterator> range = commandArgs.equal_range("-miner");
     multimap<string, string>::iterator it;
@@ -271,19 +287,20 @@ void initWinsock() {
 
 }
 
-void connectToStratum() {
+bool connectToStratum() {
 
     struct hostent* he = gethostbyname(rpcConfigParams.server.c_str());
     if (he == NULL) {
         printf("Cannot resolve host %s\n", rpcConfigParams.server.c_str());
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        return false;
     }
 
     struct sockaddr_in addr {};
     stratumSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (stratumSocket < 0) {
         printf("Cannot open socket.\n");
-        exit(1);
+        return false;
     }
 
     addr.sin_family = AF_INET;
@@ -295,17 +312,21 @@ void connectToStratum() {
     if (err != 0) {
         printf("Error connecting to %s:%s\n", rpcConfigParams.server.c_str(), rpcConfigParams.port.c_str());
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        return false;
     }
 
+    socketError = false;
 
+    return true;
 }
 
 void authorizeStratum() {
     char buf[4096];
     sprintf(buf, "{\"params\": [\"%s\", \"%s\"], \"id\": \"auth\", \"method\": \"mining.authorize\"}", rpcConfigParams.user.c_str(), rpcConfigParams.pass.c_str());
     int numSent = send(stratumSocket, buf, strlen(buf), 0);
-    if (numSent < 0)
+    if (numSent < 0) {
         printf("Error on authentication\n");        //todo - I'm not sure this is 100% true
+    }
 }
 
 int main(int argc, char* argv[])
@@ -322,7 +343,8 @@ int main(int argc, char* argv[])
 
     if (minerMode == "stratum") {
         initWinsock();
-        connectToStratum();
+        if (!connectToStratum())
+            exit(0);
         authorizeStratum();
     }
 
@@ -337,18 +359,30 @@ int main(int argc, char* argv[])
     startMiners();
 
     while (true) {
-        //todo - need to think about how to do this - reset getwork buffer, etc
-        /*
-        int error = 0;
-        size_t len = sizeof(error);
-        int retval = getsockopt(stratumSocket, SOL_SOCKET, SO_ERROR, (char*)&error, (char*)&len);
-        if (retval != 0) {
-            connectToStratum();
-            authorizeStratum();
+        if (minerMode == "stratum") {
+            if (socketError) {
+                printf("Socket error\nInitiating restart\n\n");
+
+                printf("Pausing miners...\n");
+
+                for (int i = 0; i < miners.size(); i++)
+                    miners[i]->pause = true;
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+
+                printf("Reconnecting to stratum...\n");
+                while (!connectToStratum())
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                authorizeStratum();
+                startGetWork();
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                printf("Starting miners...\n");
+                for (int i = 0; i < miners.size(); i++)
+                    miners[i]->pause = false;
+                std::this_thread::sleep_for(std::chrono::seconds(3));
+                printf("Restart complete\n\n");
+            }
         }
-        */
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        //Sleep(1000);
     }
 
 }

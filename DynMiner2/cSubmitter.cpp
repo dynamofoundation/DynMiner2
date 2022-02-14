@@ -180,9 +180,13 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         //printf("%s\n", buf);
 
-        int numSent = send(stratumSocket, buf, strlen(buf), 0);
-        if (numSent < 0)
+        int numSent = send(*stratumSocket, buf, strlen(buf), 0);
+        if (numSent < 0) {
             printf("Socket error on submit block\n");
+            *socketError = true;
+            return;
+        }
+        
 
         rpcSequence++;
 
