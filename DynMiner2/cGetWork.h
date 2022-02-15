@@ -47,7 +47,7 @@ public:
 	cGetWork();
 	void getWork(string mode, int stratumSocket, cStatDisplay *statDisplay);
 	void setJobDetailsStratum(json msg);
-	void setJobDetailsSolo(json msg, uint32_t extranonce);
+	void setJobDetailsSolo(json msg, uint32_t extranonce, string coinbaseWallet);
 	void startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay);
 	void startSoloGetWork(cStatDisplay* statDisplay);
 	void startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay);
@@ -97,6 +97,9 @@ public:
 	//used by all miners
 	mutex nonceLock;
 	uint32_t masterNonce;
+
+	//used by pool to force coinbase
+	string miningWallet;
 
 	bool reqNewBlockFlag;		//for solo mining - to get new block on either block height change or submission of good block
 

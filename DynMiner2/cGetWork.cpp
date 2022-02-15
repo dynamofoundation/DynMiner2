@@ -68,7 +68,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
         uint32_t extra_nonce = lTick % 0xFFFFFFFF;
 
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
-        setJobDetailsSolo(jResult, extra_nonce);
+        setJobDetailsSolo(jResult, extra_nonce, rpcWallet);
         statDisplay->totalStats->blockHeight = jResult["result"]["height"];
 
         reqNewBlockFlag = false;
@@ -252,7 +252,7 @@ void cGetWork::setJobDetailsStratum(json msg) {
 
 void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
     std::vector<char> buffer;
-    uint32_t extraNonce;
+    uint32_t extraNonce = 0;
 
     while (true) {
         const int tmpBuffLen = 4096;
@@ -279,9 +279,10 @@ void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
                 json msg = json::parse(line.c_str());
                 const json& id = msg["id"];
                 if (id.is_null()) {
-                    const std::string& method = msg["method"];
+                    const std::string& method = msg["command"];
                     if (method == "block_data") {
-                        setJobDetailsSolo(msg["data"], extraNonce);
+                        strProgram = msg["data"]["program"];
+                        setJobDetailsSolo(msg["data"], extraNonce, miningWallet);
                     }
                     else if (method == "set_difficulty") {
                         difficultyTarget = msg["data"];
@@ -289,6 +290,9 @@ void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
                     }
                     else if (method == "set_extranonce") {
                         extraNonce = msg["data"];
+                    }
+                    else if (method == "set_mining_wallet") {
+                        miningWallet = msg["data"];
                     }
                     else {
                         printf("Unknown pool method %s\n", method.data());
@@ -414,7 +418,7 @@ static unsigned int countLeadingZeros(unsigned char* hash) {
     return c;
 }
 
-void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
+void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinbaseAddress) {
 
 
     lockJob.lock();
@@ -441,7 +445,7 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce) {
 
     //decode pay to address for miner
     static unsigned char pk_script[25] = { 0 };
-    std::string payToAddress(rpcWallet);
+    std::string payToAddress(coinbaseAddress);
     int pk_script_size = address_to_script(pk_script, sizeof(pk_script), payToAddress.c_str());
 
     //decode pay to address for developer

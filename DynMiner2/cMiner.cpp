@@ -506,7 +506,7 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
                 uint64_t target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }
-            else if (getWork->miningMode == "stratum") {
+            else if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
                 uint64_t target = share_to_target(getWork->difficultyTarget) * 65536;
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }

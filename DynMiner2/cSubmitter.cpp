@@ -264,7 +264,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         int len = data.length();
         int sent = 0;
-        while ((sent < len) && (!socketError)) {
+        while ((sent < len) && (!(*socketError))) {
             int numSent = send(*stratumSocket, data.c_str() + sent, len, 0);
             if (numSent <= 0)
                 *socketError = true;
