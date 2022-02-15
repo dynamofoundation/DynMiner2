@@ -342,6 +342,8 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
             linePtr++;
             loop_opcode_count = loop_opcode_count % byteCode[linePtr] + 1;
 
+            //printf("loop %d\n", loop_opcode_count);
+
             linePtr++;
             loop_line_ptr = linePtr;        //line to return to after endloop
         }
@@ -501,13 +503,15 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
             memcpy(buffHeader, getWork->nativeData, 80);
 
             checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, getWork->programVM->byteCode.size() * 4, getWork->programVM->byteCode.data(), 0, NULL, NULL));
+            
+            uint64_t target = 0;
 
             if (getWork->miningMode == "solo") {
-                uint64_t target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
+                target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }
             else if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
-                uint64_t target = share_to_target(getWork->difficultyTarget) * 65536;
+                target = share_to_target(getWork->difficultyTarget) * 65536;
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }
 
@@ -519,6 +523,15 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
             uint32_t nonce = MinNonce;
 
             while (workID == getWork->workID) {
+                if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
+                    uint64_t newTarget = share_to_target(getWork->difficultyTarget) * 65536;
+                    if (newTarget != target) {
+                        target = newTarget;
+                        checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+                    }
+                }
+
+
                 memcpy(&buffHeader[76], &nonce, 4);
                 uint32_t zero = 0;
                 size_t gOffset = nonce;

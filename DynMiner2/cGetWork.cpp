@@ -294,6 +294,15 @@ void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
                     else if (method == "set_mining_wallet") {
                         miningWallet = msg["data"];
                     }
+                    else if (method == "block_status") {
+                        string status = msg["data"];
+                        if (status == "accept")
+                            statDisplay->totalStats->accepted_share_count++;
+                        else if (status == "high-hash")
+                            statDisplay->totalStats->rejected_share_count++;
+                        else if (status == "duplicate")
+                            statDisplay->totalStats->rejected_share_count++;
+                    }
                     else {
                         printf("Unknown pool method %s\n", method.data());
                     }
@@ -693,8 +702,12 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     programVM->byteCode.clear();
     programVM->generateBytecode(program, merkleRoot, prevBlockHashBin);
 
-    if (stats != NULL)
-        stats->totalStats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
+    if (stats != NULL) {
+        if (miningMode == "solo")
+            stats->totalStats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
+        else 
+            stats->totalStats->network_diff = countLeadingZeros((unsigned char*)iNativeTarget);
+    }
 
     workID++;
 

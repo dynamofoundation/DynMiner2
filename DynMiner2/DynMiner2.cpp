@@ -393,7 +393,12 @@ int main(int argc, char* argv[])
                 printf("Reconnecting to stratum/pool...\n");
                 while (!connectToStratum())
                     std::this_thread::sleep_for(std::chrono::seconds(1));
-                authorizeStratum();
+
+                if (minerMode == "stratum") 
+                    authorizeStratum();
+                else 
+                    authorizePool();
+
                 startGetWork();
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 printf("Starting miners...\n");

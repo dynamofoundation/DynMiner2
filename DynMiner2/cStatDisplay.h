@@ -34,6 +34,7 @@ public:
     atomic<uint32_t> accepted_share_count{};
     atomic<uint32_t> rejected_share_count{};
     atomic<uint32_t> latest_diff{};
+    atomic<uint32_t> network_diff{};
     uint32_t blockHeight;
 };
 

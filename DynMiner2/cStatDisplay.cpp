@@ -135,8 +135,13 @@ void cStatDisplay::displayStats(cSubmitter *submitter, string mode, int hiveos, 
             printf("R: %4d", totalStats->rejected_share_count.load(std::memory_order_relaxed));
             SET_COLOR(LIGHTGRAY);
             printf(" | ");
+
             SET_COLOR(LIGHTGREEN);
-            printf(" D:%-4d", totalStats->latest_diff.load(std::memory_order_relaxed));
+            if (mode == "pool")
+                printf(" D:%2d/%2d", totalStats->latest_diff.load(std::memory_order_relaxed), totalStats->network_diff.load(std::memory_order_relaxed));
+            else
+                printf(" D:%-2d", totalStats->latest_diff.load(std::memory_order_relaxed));
+
             SET_COLOR(LIGHTGRAY);
             printf(" | ");
             SET_COLOR(LIGHTGREEN);
