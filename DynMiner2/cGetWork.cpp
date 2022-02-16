@@ -474,10 +474,8 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     le32enc((uint32_t*)cbtx, 1);    //version
     cbtx[4] = 1;                    //txin count
     memset(cbtx + 5, 0x00, 32);     //prev txn hash out
-    if (miningMode == "pool")
-        le32enc((uint32_t*)(cbtx + 37), extranonce);    //prev txn index out
-    else
-        le32enc((uint32_t*)(cbtx + 37), 0xffffffff);    //prev txn index out
+    le32enc((uint32_t*)(cbtx + 37), 0xffffffff);    //prev txn index out
+
     int cbtx_size = 43;
 
     for (int n = chainHeight; n; n >>= 8) {
@@ -486,6 +484,12 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
             cbtx[cbtx_size++] = 0;
     }
     
+
+    if (miningMode == "pool") {
+        memcpy(cbtx + cbtx_size, &extranonce, 4);
+        cbtx_size += 4;
+    }
+
     //memcpy(cbtx + cbtx_size, cbmsg, strlen(cbmsg));
     //cbtx_size += strlen(cbmsg);
     
