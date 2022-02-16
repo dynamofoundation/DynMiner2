@@ -220,7 +220,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\"] }");
 
-        //printf("submit result: %s\n", jResult.dump().c_str());
+        printf("submit result: %s\n", jResult.dump().c_str());
 
         if (jResult["error"].is_null()) {
             //printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
@@ -266,8 +266,9 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
         int sent = 0;
         while ((sent < len) && (!(*socketError))) {
             int numSent = send(*stratumSocket, data.c_str() + sent, len, 0);
-            if (numSent <= 0)
+            if (numSent <= 0) {
                 *socketError = true;
+            }
             else
                 sent += numSent;
         }
