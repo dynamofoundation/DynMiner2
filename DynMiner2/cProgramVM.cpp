@@ -26,6 +26,10 @@ int opSize(string op) {
     if (op.rfind("MEMXORHASHPREV", 14) != string::npos) {
         return 1;
     }
+    if (op.rfind("MEMGEN", 6) != string::npos) {
+        return 3;
+    }
+
 
     printf("unsupported opcode after IF: %s\n", op.c_str());
     exit(0);
