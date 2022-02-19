@@ -27,7 +27,7 @@ int opSize(string op) {
         return 1;
     }
     if (op.rfind("MEMGEN", 6) != string::npos) {
-        return 3;
+        return 2;
     }
 
 
