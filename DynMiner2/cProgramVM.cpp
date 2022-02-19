@@ -98,6 +98,14 @@ void cProgramVM::generateBytecode(vector<string> strProgram, unsigned char* merk
             else if (tokens[1] == "ADD") {
                 byteCode.push_back(1);
             }
+            else {
+                printf("Error in hash algo");
+                exit(0);
+            }
+            if (tokens.size() != 3) {
+                printf("Missing opcode param for READMEM2");
+                exit(0);
+            }
             byteCode.push_back(0);  //only support prev hash currently
             break;
 
@@ -120,11 +128,21 @@ void cProgramVM::generateBytecode(vector<string> strProgram, unsigned char* merk
             if (tokens[1] == "TEMP") {
                 byteCode.push_back(0);
             }
+            else {
+                printf("Unrecognized EXECOP source");
+                exit(0);
+            }
             break;
 
         case eOpcode::END:
             break;
+
+        default:
+            printf("Unrecognized opcode");
+            exit(0);
+
         }
+
 
 
 

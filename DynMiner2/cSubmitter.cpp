@@ -230,8 +230,13 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
             //printf(" **** SUBMITTED BLOCK SOLUTION FOR APPROVAL!!! ****\n");
             getWork->reqNewBlockFlag = true;
             statDisplay->totalStats->share_count++;
-            if (jResult["result"] == "high-hash")
-                statDisplay->totalStats->rejected_share_count++;
+            if (jResult["result"].is_null()) {
+                statDisplay->totalStats->accepted_share_count++;
+            }
+            else {
+                if (jResult["result"] == "high-hash")
+                    statDisplay->totalStats->rejected_share_count++;
+            }
         }
         else {
             //printf("Submit block failed: %s.\n", jResult["error"]);
