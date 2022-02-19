@@ -61,6 +61,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="dyn_miner2.cl" />
+    <None Include="dyn_miner3.cl" />
   </ItemGroup>
 </Project>

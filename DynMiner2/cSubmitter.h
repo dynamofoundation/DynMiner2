@@ -51,6 +51,8 @@ public:
 	void addHashResults(unsigned char* hashBuffer, int hashCount, string jobID, int deviceID, uint32_t* nonceIndex);
 	unsigned int countLeadingZeros(unsigned char* hash);
 
+	mutex submitLock;
+
 	mutex hashListLock;
 	vector<cHashResult*> hashList;
 

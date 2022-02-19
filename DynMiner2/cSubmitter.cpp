@@ -172,6 +172,8 @@ void cSubmitter::submitNonceThread(cGetWork* getWork) {
 
 void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
+    submitLock.lock();
+
     if (minerMode == "stratum") {
         char buf[4096];
         unsigned int* pNonce = &nonce;
@@ -184,6 +186,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
         if (numSent < 0) {
             printf("Socket error on submit block\n");
             *socketError = true;
+            submitLock.unlock();
             return;
         }
         
@@ -192,6 +195,7 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         statDisplay->totalStats->share_count++;
     }
+
     else if (minerMode == "solo") {
         getWork->lockJob.lock();
 
@@ -275,6 +279,8 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         statDisplay->totalStats->share_count++;
     }
+
+    submitLock.unlock();
     
 }
 
