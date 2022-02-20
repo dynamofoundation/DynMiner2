@@ -125,7 +125,7 @@ void showUsage(const char* message) {
     printf("  multiple miner params are allowed\n");
     printf("\n");
     printf("Example:\n");
-    printf("  dynminer2 -mode solo -server http://127.0.0.1/ -user user -pass 123123 -wallet dy1xxxxxxxxxxxxxxxxxxxxxxxx -miner GPU,1000,64,0,1\n\n");
+    printf("  dynminer -mode solo -server http://127.0.0.1/ -user user -pass 123123 -wallet dy1xxxxxxxxxxxxxxxxxxxxxxxx -miner GPU,1000,64,0,1\n\n");
     exit(0);
 }
 
