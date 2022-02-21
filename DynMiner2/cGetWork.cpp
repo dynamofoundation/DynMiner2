@@ -2,6 +2,7 @@
 #include "cProgramVM.h"
 #include "cStatDisplay.h"
 
+#define DEBUG_HIVE
 
 cGetWork::cGetWork() {
 	workID = 0;
@@ -254,14 +255,29 @@ void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
     std::vector<char> buffer;
     uint32_t extraNonce = 0;
 
+#ifdef DEBUG_HIVE
+    printf ("socket %d\n", stratumSocket);
+#endif
+
     while (true) {
         const int tmpBuffLen = 4096;
         char tmpBuff[tmpBuffLen];
         memset(tmpBuff, 0, tmpBuffLen);
+
+#ifdef DEBUG_HIVE
+        printf("recv\n");
+#endif
+
         int numRecv = recv(stratumSocket, tmpBuff, tmpBuffLen, 0);
+
+
         if (numRecv > 0)
             for (int i = 0; i < numRecv; i++)
                 buffer.push_back(tmpBuff[i]);
+
+#ifdef DEBUG_HIVE
+        printf("pushback\n");
+#endif
 
 
         //TODO - evaluate memory leaks due to return - might need a ~cGetWork
@@ -275,8 +291,18 @@ void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
 
         if (buffer.size() > 0) {
             string line;
+
+#ifdef DEBUG_HIVE
+            printf("readline\n");
+#endif
+
             while (readLine(buffer, line)) {
                 json msg = json::parse(line.c_str());
+
+#ifdef DEBUG_HIVE
+                printf("msg %s\n", msg.dump().c_str());
+#endif
+
                 const json& id = msg["id"];
                 if (id.is_null()) {
                     const std::string& method = msg["command"];
