@@ -105,7 +105,7 @@ void showUsage(const char* message) {
     printf("Error parsing command line arguments\n%s\n\n", message);
 
     printf("USAGE\n");
-    printf("dynminer2 \n");
+    printf("dynminer \n");
     printf("  -mode [solo|stratum|pool]\n");
     printf("  -server <rpc server URL or stratum/pool IP>\n");
     printf("  -port <rpc port>  [only used for stratum and pool]\n");

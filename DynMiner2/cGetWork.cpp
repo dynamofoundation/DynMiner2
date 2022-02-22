@@ -2,7 +2,7 @@
 #include "cProgramVM.h"
 #include "cStatDisplay.h"
 
-#define DEBUG_HIVE
+//#define DEBUG_HIVE
 
 cGetWork::cGetWork() {
 	workID = 0;
