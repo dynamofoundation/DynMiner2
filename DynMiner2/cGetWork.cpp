@@ -95,6 +95,8 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 void cGetWork::startStratumGetWork(int stratumSocket, cStatDisplay* statDisplay) {
     std::vector<char> buffer;
 
+    transactionString = NULL;
+
 	while (true) {
 		const int tmpBuffLen = 4096;
 		char tmpBuff[tmpBuffLen];
@@ -256,6 +258,8 @@ void cGetWork::setJobDetailsStratum(json msg) {
 void cGetWork::startPoolGetWork(int stratumSocket, cStatDisplay* statDisplay) {
     std::vector<char> buffer;
     uint32_t extraNonce = 0;
+
+    transactionString = NULL;
 
 #ifdef DEBUG_HIVE
     printf ("socket %d\n", stratumSocket);
