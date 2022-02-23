@@ -209,10 +209,11 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
 
     while (1) {
        
-        
+        /*
         for (int i = 0; i < 8; i++)
             printf("%08X", myHashResult[i]);
         printf("\n");
+        */
         
 
         if (byteCode[linePtr] == HASHOP_ADD) {
