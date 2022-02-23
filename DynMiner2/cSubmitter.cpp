@@ -222,6 +222,8 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         getWork->lockJob.unlock();
 
+        printf("submit header: %s\n\n", hexHeader);
+
         json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\"] }");
 
         printf("submit result: %s\n", jResult.dump().c_str());

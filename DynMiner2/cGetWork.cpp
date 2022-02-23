@@ -59,7 +59,9 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
 		jResult = execRPC("{ \"id\": 0, \"method\" : \"gethashfunction\", \"params\" : [] }");
         strProgram = jResult["result"][0]["program"];
         int start_time = jResult["result"][0]["start_time"];
+#ifdef DEBUG
         printf("got program %d\n", start_time);
+#endif
         programStartTime = start_time;
 
 
