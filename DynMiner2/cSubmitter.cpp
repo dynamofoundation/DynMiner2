@@ -148,6 +148,7 @@ unsigned int cSubmitter::countLeadingZeros(unsigned char* hash) {
 
 void cSubmitter::submitNonceThread(cGetWork* getWork) {
     
+    /*
     while (true) {
         nonceListLock.lock();
         if (!nonceList.empty()) {
@@ -166,11 +167,12 @@ void cSubmitter::submitNonceThread(cGetWork* getWork) {
 
         }
     }
+    */
 
 }
 
 
-void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
+void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork, int workID ) {
 
     submitLock.lock();
 
@@ -222,7 +224,13 @@ void cSubmitter::submitNonce(unsigned int nonce, cGetWork *getWork) {
 
         getWork->lockJob.unlock();
 
-        printf("submit header: %s\n\n", hexHeader);
+        if (getWork->workID != workID) {
+            printf("Stale nonce, skipping\n");
+            submitLock.unlock();
+            return;
+        }
+
+        //printf("submit header: %s\n\n", hexHeader);
 
         json jResult = execRPC("{ \"id\": 0, \"method\" : \"submitblock\", \"params\" : [\"" + strBlock + "\"] }");
 

@@ -158,7 +158,7 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
                 memcpy(&hash_int, hash, 8);
                 hash_int = htobe64(hash_int);
                 if (hash_int < target)
-                    submitter->submitNonce(nonce, getWork);
+                    submitter->submitNonce(nonce, getWork, workID);
 
                 nonce++;
                 statDisplay->totalStats->nonce_count++;
@@ -179,8 +179,16 @@ void sha256(unsigned int len, unsigned char* data, unsigned char* output, CSHA25
 
 void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteCode, unsigned int* myHashResult, CSHA256 _sha256) {
 
+    
+    //hex2bin(myHeader, "40000000000002BFAAC1A438664DA0F203BAFF381DD2B32B38DC840C0EA176B125E3B335A40D0F5692310EB526E1855CC6524615EA80A5D6C2E9AA159A7927929F744353394F", 80);
 
-    //hex2bin(myHeader, "40000000000000023864150D435518426A0E938EA34A6D3483AC82F08EBD19DE9498B8B8B828786343EAE185A6DD8F807831494C30C58A6B1A0D4B45B5462E378A2BD235C63EEC619694051D00000000", 80);
+    /*
+    for (int i = 0; i < 16; i++) {
+        unsigned char swap = myHeader[i+4];
+        myHeader[i+4] = myHeader[35 - i];
+        myHeader[35 - i] = swap;
+    }
+    */
 
     uint32_t myMemGen[512 * 8];
     uint32_t tempStore[8];
@@ -201,11 +209,11 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
 
     while (1) {
        
-        /*
+        
         for (int i = 0; i < 8; i++)
             printf("%08X", myHashResult[i]);
         printf("\n");
-        */
+        
 
         if (byteCode[linePtr] == HASHOP_ADD) {
             linePtr++;
@@ -508,26 +516,36 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
 
             if (getWork->miningMode == "solo") {
                 target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
+                //checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &getWork->targetZeros));
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }
             else if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
                 target = share_to_target(getWork->difficultyTarget) * 65536;
+                //checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &getWork->targetZeros));
                 checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
             }
 
             getWork->lockJob.unlock();
 
             // WARNING: what if they have multiple platforms?
-            uint32_t MinNonce = (0xFFFFFFFFULL / numOpenCLDevices) * GPUIndex;
-            uint32_t MaxNonce = MinNonce + (0xFFFFFFFFULL / numOpenCLDevices);
-            uint32_t nonce = MinNonce;
+            //uint32_t MinNonce = (0xFFFFFFFFULL / numOpenCLDevices) * GPUIndex;
+            //uint32_t MaxNonce = MinNonce + (0xFFFFFFFFULL / numOpenCLDevices);
+            //uint32_t nonce = MinNonce;
+
+
 
             while (workID == getWork->workID) {
+                getWork->lockNonce.lock();
+                uint32_t nonce = getWork->nextNonce;
+                getWork->nextNonce += computeUnits * gpuLoops;
+                getWork->lockNonce.unlock();
+
                 if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
                     uint64_t newTarget = share_to_target(getWork->difficultyTarget) * 65536;
                     if (newTarget != target) {
                         target = newTarget;
                         checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+                        //checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &getWork->targetZeros));
                     }
                 }
 
@@ -543,18 +561,21 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
                 checkReturn("clFinish", clFinish(commandQueue));
                 checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, sizeof(cl_uint) * 0x100, buffNonce, 0, NULL, NULL));
 
+                //printf("num nonce %d\n", buffNonce[0xFF]);
                 for (int i = 0; i < buffNonce[0xFF]; ++i)
                 {
-                    submitter->submitNonce(buffNonce[i], getWork);
+                    submitter->submitNonce(buffNonce[i], getWork, workID);
                 }
 
-                nonce += computeUnits * gpuLoops;
+                //nonce += computeUnits * gpuLoops;
                 statDisplay->totalStats->nonce_count += computeUnits * gpuLoops;
 
+                /*
                 if (nonce >= MaxNonce)
                 {
                     printf("WARNING: GPU ran out of work!\nTODO: Fix me.\n.");
                 }
+                */
             }
         }
         else

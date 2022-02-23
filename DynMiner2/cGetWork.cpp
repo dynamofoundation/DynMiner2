@@ -80,7 +80,7 @@ void cGetWork::startSoloGetWork( cStatDisplay* statDisplay) {
         time(&start);
         time(&now);
         while ((!newBlock) && (!reqNewBlockFlag) && (now - start < 3)) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             jResult = execRPC("{ \"id\": 0, \"method\" : \"getblocktemplate\", \"params\" : [{ \"rules\": [\"segwit\"] }] }");
             if (jResult["result"]["height"] != chainHeight) {
                 newBlock = true;
@@ -737,11 +737,15 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     programVM->byteCode.clear();
     programVM->generateBytecode(program, merkleRoot, prevBlockHashBin);
 
+    targetZeros = countLeadingZeros((unsigned char*)iNativeTarget);
+
     if (stats != NULL) {
-        if (miningMode == "solo")
+        if (miningMode == "solo") {
             stats->totalStats->latest_diff = countLeadingZeros((unsigned char*)iNativeTarget);
-        else 
+        }
+        else {
             stats->totalStats->network_diff = countLeadingZeros((unsigned char*)iNativeTarget);
+        }
     }
 
     workID++;

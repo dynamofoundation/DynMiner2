@@ -60,6 +60,9 @@ public:
 	atomic<uint32_t> workID;
 	mutex lockJob;
 
+	mutex lockNonce;
+	uint32_t nextNonce;
+
 	string miningMode;
 	int* socketError;
 
@@ -85,6 +88,7 @@ public:
 	char strMerkleRoot[128];
 	string strBlock;
 	char* transactionString;
+	uint64_t targetZeros;
 
 	CURL* curl;
 	CURLcode res;

@@ -44,7 +44,7 @@ class cSubmitter
 public:
 	void submitEvalThread(cGetWork *getWork, cStatDisplay *iStatDisplay, string mode);
 	void submitNonceThread(cGetWork* getWork);
-	void submitNonce(unsigned int nonce, cGetWork* getWork);
+	void submitNonce(unsigned int nonce, cGetWork* getWork, int workID);
 	json execRPC(string data);
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
