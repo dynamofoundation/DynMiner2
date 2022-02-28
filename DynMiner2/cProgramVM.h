@@ -26,7 +26,8 @@ enum eOpcode {
     STORETEMP = 13,
     EXECOP = 14,
     MEMADDHASHPREV = 15,
-    MEMXORHASHPREV = 16
+    MEMXORHASHPREV = 16,
+    SUMBLOCK = 17
 
 };
 

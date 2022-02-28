@@ -29,6 +29,9 @@ int opSize(string op) {
     if (op.rfind("MEMGEN", 6) != string::npos) {
         return 2;
     }
+    if (op.rfind("SUMBLOCK", 8) != string::npos) {
+        return 1;
+    }
 
 
     printf("unsupported opcode after IF: %s\n", op.c_str());
@@ -138,6 +141,10 @@ void cProgramVM::generateBytecode(vector<string> strProgram, unsigned char* merk
             }
             break;
 
+        case eOpcode::SUMBLOCK:
+            break;
+
+
         case eOpcode::END:
             break;
 
@@ -206,6 +213,9 @@ eOpcode cProgramVM::parseOpcode(vector<string> token) {
     }
     if (op == "MEMXORHASHPREV") {
         return eOpcode::MEMXORHASHPREV;
+    }
+    if (op == "SUMBLOCK") {
+        return eOpcode::SUMBLOCK;
     }
 
     printf("Unrecognized opcode %s in program\n", token[0].c_str());

@@ -114,11 +114,10 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
 
     unsigned char* buffHeader = (unsigned char*) malloc(80);
 
-    //printf("%d\n", startNonce);
+    hashBlock = (unsigned char*)malloc(1024 * 1024 * 3072);
 
     char cKey[32];
     sprintf(cKey, "CPU%d", cpuIndex );
-    //string sKey = string::basic_string(cKey);
     basic_string<char> sKey(cKey);
     statDisplay->addCard(sKey);
 
@@ -410,6 +409,20 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
 
         }
 
+        else if (byteCode[linePtr] == HASHOP_SUMBLOCK) {
+            //this calc can be optimized, although the performance gain is minimal
+            uint64_t row = (myHashResult[0] + myHashResult[1] + myHashResult[2] + myHashResult[3]) % 3072;
+            uint64_t col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
+            uint64_t index = row * 32768 + col;
+            const uint64_t hashBlockSize = 1024ULL * 1024ULL * 3072ULL;
+            for (int i = 0; i < 256; i++) 
+                myHashResult[i % 8] += hashBlock[(index + i) % hashBlockSize ];
+
+            linePtr++;
+        }
+
+
+
         else if (byteCode[linePtr] == HASHOP_END) {
             break;
         }
@@ -452,12 +465,22 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     cl_mem clMemgenBuffer;
     unsigned char* memGenBuffer;
 
+    unsigned char* seedBlock;
+
+    cl_mem clHashBlock;
+    unsigned char* hashBlock;
+
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
 
     checkReturn("clGetPlatformIDs", clGetPlatformIDs(16, platform_id, &ret_num_platforms));
     checkReturn("clGetDeviceIDs", clGetDeviceIDs(platform_id[platformID], CL_DEVICE_TYPE_GPU, 16, open_cl_devices, &numOpenCLDevices));
     cl_context context = clCreateContext(NULL, 1, &open_cl_devices[deviceID], NULL, NULL, &returnVal);
+
+    cl_ulong maxMemAlloc;
+    size_t sizeRet;
+    clGetDeviceInfo(open_cl_devices[deviceID], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &maxMemAlloc, &sizeRet);
+
 
     cl_program program = loadMiner(context, &open_cl_devices[deviceID], gpuLoops);
 
@@ -490,11 +513,19 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
 
 
+    size_t hashBockSize = 1024ULL * 1024ULL * 3072ULL;
+    clHashBlock = clCreateBuffer(context, CL_MEM_READ_WRITE, hashBockSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*)&clHashBlock));
+
     char cKey[32];
     sprintf(cKey, "%02d:%02d.0", platformID, deviceID);
     //string sKey = string::basic_string(cKey);
     basic_string<char> sKey(cKey);
     statDisplay->addCard(sKey);
+
+    unsigned char* chashBlock = (unsigned char*)malloc(hashBockSize);
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock, CL_TRUE, 0, hashBockSize, chashBlock, 0, NULL, NULL));
+
 
     while (true) {
 

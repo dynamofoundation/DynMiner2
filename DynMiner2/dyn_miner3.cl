@@ -1,4 +1,4 @@
-#define VERSION 3.01
+#define VERSION 3.1
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
@@ -593,10 +593,11 @@ static inline uint CLZz(uint x)
 #define HASHOP_EXECOP 14
 #define HASHOP_MEMADDHASHPREV 15
 #define HASHOP_MEMXORHASHPREV 16
+#define HASHOP_SUMBLOCK 17
 
 #define SWAP32(x)	as_uint(as_uchar4(x).s3210)
 
-__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* NonceRetBuf, const ulong target, __global uint* global_memgen) {
+__kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __global uint* hostHeader, __global uint* NonceRetBuf, const ulong target, __global uint* global_memgen, __global uint* global_hashblock) {
     
     int computeUnitID = get_global_id(0) - get_global_offset(0);
 
@@ -857,6 +858,18 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     }
 
                 }
+
+                else if (byteCode[linePtr] == HASHOP_SUMBLOCK) {
+                    //this calc can be optimized, although the performance gain is minimal
+                    uint64_t row = (myHashResult[0] + myHashResult[1] + myHashResult[2] + myHashResult[3]) % 3072;
+                    uint64_t col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
+                    uint64_t index = row * 32768 + col;
+                    const uint64_t hashBlockSize = 1024ULL * 1024ULL * 3072ULL;
+                    for (int i = 0; i < 256; i++)
+                        myHashResult[i % 8] += hashBlock[(index + i) % hashBlockSize];
+                    linePtr++;
+                }
+
 
                 else if (byteCode[linePtr] == HASHOP_END) {
                     break;

@@ -34,6 +34,7 @@ using namespace std;
 #define HASHOP_EXECOP 14
 #define HASHOP_MEMADDHASHPREV 15
 #define HASHOP_MEMXORHASHPREV 16
+#define HASHOP_SUMBLOCK 17
 
 class cMiner
 {
@@ -49,5 +50,9 @@ public:
 	cl_command_queue commandQueue;
 
 	bool pause;
+
+	unsigned char* hashBlock;
+
+
 
 };

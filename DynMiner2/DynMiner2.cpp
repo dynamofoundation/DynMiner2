@@ -111,7 +111,6 @@ void showUsage(const char* message) {
     printf("  -port <rpc port>  [only used for stratum and pool]\n");
     printf("  -user <username>\n");
     printf("  -pass <password>  [used only for solo and stratum]\n");
-    printf("  -diff <initial difficulty>  [optional]\n");
     printf("  -wallet <wallet address>   [only used for solo]\n");
     printf("  -miner <miner params>\n");
     printf("  -hiveos [0|1]   [optional, if 1 will format output for hiveos]\n");
