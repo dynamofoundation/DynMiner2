@@ -865,7 +865,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
                     unsigned long col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
                     unsigned long index = row * 32768 + col;
                     const unsigned long hashBlockSize = 1024UL * 1024UL * 3072UL;
-                    for (int i = 0; i < 256; i++)
+                    for (int i = 0; i < 128; i++)
                         myHashResult[i % 8] += global_hashblock[(index + i) % hashBlockSize];
                     linePtr++;
                 }
