@@ -45,6 +45,8 @@ cStatDisplay* statDisplay;
 cGetWork* getWork;
 cSubmitter* submitter;
 
+unsigned char* hashBlock;
+
 vector<cMiner*> miners;
 
 struct sRpcConfigParams {
@@ -257,7 +259,7 @@ void startOneMiner(std::string params, uint32_t GPUIndex) {
     printf("Starting miner with params: %s\n", params.c_str());
 
     cMiner *miner = new cMiner();
-    thread minerThread(&cMiner::startMiner, miner, params, getWork, submitter, statDisplay, GPUIndex);
+    thread minerThread(&cMiner::startMiner, miner, params, getWork, submitter, statDisplay, GPUIndex, hashBlock);
     minerThread.detach();
 
     miners.push_back(miner);
@@ -367,6 +369,16 @@ int main(int argc, char* argv[])
             exit(0);
         authorizePool();
     }
+
+    const uint64_t hashBlockSize = 1024ULL * 1024ULL * 3072ULL;
+    hashBlock = (unsigned char*)malloc(hashBlockSize);
+    if (hashBlock == NULL) {
+        printf("Unable to allocate 3GB hash block, aborting.\n");
+        exit(0);
+    }
+
+    memset(hashBlock, 0, hashBlockSize);
+
 
     statDisplay = new cStatDisplay();
     getWork = new cGetWork();

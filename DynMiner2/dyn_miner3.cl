@@ -861,12 +861,12 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
                 else if (byteCode[linePtr] == HASHOP_SUMBLOCK) {
                     //this calc can be optimized, although the performance gain is minimal
-                    uint64_t row = (myHashResult[0] + myHashResult[1] + myHashResult[2] + myHashResult[3]) % 3072;
-                    uint64_t col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
-                    uint64_t index = row * 32768 + col;
-                    const uint64_t hashBlockSize = 1024ULL * 1024ULL * 3072ULL;
+                    unsigned long row = (myHashResult[0] + myHashResult[1] + myHashResult[2] + myHashResult[3]) % 3072;
+                    unsigned long col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
+                    unsigned long index = row * 32768 + col;
+                    const unsigned long hashBlockSize = 1024UL * 1024UL * 3072UL;
                     for (int i = 0; i < 256; i++)
-                        myHashResult[i % 8] += hashBlock[(index + i) % hashBlockSize];
+                        myHashResult[i % 8] += global_hashblock[(index + i) % hashBlockSize];
                     linePtr++;
                 }
 

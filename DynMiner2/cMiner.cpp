@@ -16,7 +16,7 @@ uint64_t BSWAP64(uint64_t x)
 		( (x >> 56) & 0x00000000000000ffUL );
 }
 
-void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, uint32_t GPUIndex) {
+void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, uint32_t GPUIndex, unsigned char *hashBlock) {
 
     pause = false;
 
@@ -43,12 +43,12 @@ void cMiner::startMiner(string params, cGetWork *getWork, cSubmitter* submitter,
         int gpuLoops = 1;
         if (vParams.size() == 6)
             gpuLoops = atoi(vParams[5].c_str());
-        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex, gpuLoops);
+        startGPUMiner(numThread, platformID, deviceID, getWork, submitter, statDisplay, workSize, GPUIndex, gpuLoops, hashBlock);
     }
     else {
         uint32_t startNonce = 0xFFFFFFFF / numThread;
         for (unsigned int i = 0; i < numThread; i++) {
-            thread minerThread(&cMiner::startCPUMiner, this, getWork, submitter, statDisplay, i, i * startNonce);
+            thread minerThread(&cMiner::startCPUMiner, this, getWork, submitter, statDisplay, i, i * startNonce, hashBlock);
             minerThread.detach();
         }
     }
@@ -102,7 +102,7 @@ static void checkReturn(const char* call, int val) {
     }
 }
 
-void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDisplay* statDisplay, int cpuIndex, unsigned int startNonce) {
+void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDisplay* statDisplay, int cpuIndex, unsigned int startNonce, unsigned char* hashBlock) {
     bool workReady = false;
     while (!workReady) {
         getWork->lockJob.lock();
@@ -114,7 +114,6 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
 
     unsigned char* buffHeader = (unsigned char*) malloc(80);
 
-    hashBlock = (unsigned char*)malloc(1024 * 1024 * 3072);
 
     char cKey[32];
     sprintf(cKey, "CPU%d", cpuIndex );
@@ -152,7 +151,7 @@ void cMiner::startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDispla
             while (workID == getWork->workID) {
                 memcpy(&buffHeader[76], &nonce, 4);
 
-                runProgram(buffHeader, program, (unsigned int*)hash, sha256);
+                runProgram(buffHeader, program, (unsigned int*)hash, sha256, hashBlock);
                 uint64_t hash_int{};
                 memcpy(&hash_int, hash, 8);
                 hash_int = htobe64(hash_int);
@@ -176,7 +175,7 @@ void sha256(unsigned int len, unsigned char* data, unsigned char* output, CSHA25
     sha256.Finalize(output);
 }
 
-void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteCode, unsigned int* myHashResult, CSHA256 _sha256) {
+void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteCode, unsigned int* myHashResult, CSHA256 _sha256, unsigned char* hashBlock) {
 
     
     //hex2bin(myHeader, "40000000000002BFAAC1A438664DA0F203BAFF381DD2B32B38DC840C0EA176B125E3B335A40D0F5692310EB526E1855CC6524615EA80A5D6C2E9AA159A7927929F744353394F", 80);
@@ -432,7 +431,7 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
 
 }
 
-void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops) {
+void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter *submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops, unsigned char* hashBlock) {
 
     bool workReady = false;
     while (!workReady) {
@@ -468,7 +467,6 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     unsigned char* seedBlock;
 
     cl_mem clHashBlock;
-    unsigned char* hashBlock;
 
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
@@ -523,8 +521,8 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
     basic_string<char> sKey(cKey);
     statDisplay->addCard(sKey);
 
-    unsigned char* chashBlock = (unsigned char*)malloc(hashBockSize);
-    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock, CL_TRUE, 0, hashBockSize, chashBlock, 0, NULL, NULL));
+    memset(hashBlock, 0, hashBockSize);
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
 
 
     while (true) {
