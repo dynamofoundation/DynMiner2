@@ -732,8 +732,6 @@ void cMiner::startTestGPUMiner(unsigned char* hashBlock) {
         returnVal = clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_GPU, 16, device_id, &numOpenCLDevices);
         for (uint32_t j = 0; j < numOpenCLDevices; j++) {
 
-            printf("Testing platform %d, device %d\n", i, j);
-
             testOneGPU(i, j, hashBlock);        //note this is overridden from text file - need a more elegant way to test multiple/different cards eventually
         }
     }
@@ -782,6 +780,7 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
     unsigned char junk[32];
 	programVM->generateBytecode(vprogram, junk, junk);
 
+    printf("Testing platform %d, device %d\n", platformID, deviceID);
 
 
     cl_int returnVal; 
