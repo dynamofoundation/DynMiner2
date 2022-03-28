@@ -108,7 +108,7 @@ void showUsage(const char* message) {
 
     printf("USAGE\n");
     printf("dynminer \n");
-    printf("  -mode [solo|stratum|pool]\n");
+    printf("  -mode [solo|stratum|pool|testcpu|testgpu]\n");
     printf("  -server <rpc server URL or stratum/pool IP>\n");
     printf("  -port <rpc port>  [only used for stratum and pool]\n");
     printf("  -user <username>\n");
@@ -152,11 +152,14 @@ void parseCommandArgs(int argc, char* argv[]) {
         multimap<string, string>::iterator it = commandArgs.find("-mode");
         string mode = it->second;
         transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-        set<string> modeTypes = { "solo", "stratum", "pool"};
+        set<string> modeTypes = { "solo", "stratum", "pool", "testcpu", "testgpu"};
         if (modeTypes.find(mode) == modeTypes.end())
             showUsage("Invalid MODE argument");
         minerMode = mode;
     }
+
+    if ((minerMode == "testcpu") || (minerMode == "testgpu"))
+        return;
 
     if (commandArgs.find("-statrpcurl") != commandArgs.end()) {
         multimap<string, string>::iterator it = commandArgs.find("-statrpcurl");
@@ -252,6 +255,19 @@ void startGetWork() {
     workThread.detach();
 
 
+}
+
+
+void startTestGPUMiner() {
+    cMiner *miner = new cMiner();
+    thread minerThread(&cMiner::startTestGPUMiner, miner, hashBlock);
+    minerThread.detach();
+}
+
+void startTestCPUMiner() {
+    cMiner *miner = new cMiner();
+    thread minerThread(&cMiner::startTestCPUMiner, miner, hashBlock);
+    minerThread.detach();
 }
 
 
@@ -379,47 +395,59 @@ int main(int argc, char* argv[])
 
     memset(hashBlock, 0, hashBlockSize);
 
+    if (minerMode == "testgpu") {
+        startTestGPUMiner();
+        while (true)
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
-    statDisplay = new cStatDisplay();
-    getWork = new cGetWork();
-    submitter = new cSubmitter();
+    else if (minerMode == "testcpu") {
+        startTestCPUMiner();
+        while (true)
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
+    else {
+        statDisplay = new cStatDisplay();
+        getWork = new cGetWork();
+        submitter = new cSubmitter();
 
-    startStatDisplay();
-    startGetWork();
-    startSubmitter();
-    startMiners();
+        startStatDisplay();
+        startGetWork();
+        startSubmitter();
+        startMiners();
 
-    while (true) {
-        if ((minerMode == "stratum") || (minerMode == "pool")) {
-            if (socketError) {
-                printf("Socket error\nInitiating restart\n\n");
+        while (true) {
+            if ((minerMode == "stratum") || (minerMode == "pool")) {
+                if (socketError) {
+                    printf("Socket error\nInitiating restart\n\n");
 
-                printf("Pausing miners...\n");
+                    printf("Pausing miners...\n");
 
-                for (int i = 0; i < miners.size(); i++)
-                    miners[i]->pause = true;
-                std::this_thread::sleep_for(std::chrono::seconds(3));
+                    for (int i = 0; i < miners.size(); i++)
+                        miners[i]->pause = true;
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
 
-                printf("Reconnecting to stratum/pool...\n");
-                while (!connectToStratum())
+                    printf("Reconnecting to stratum/pool...\n");
+                    while (!connectToStratum())
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+                    if (minerMode == "stratum") 
+                        authorizeStratum();
+                    else 
+                        authorizePool();
+
+                    startGetWork();
                     std::this_thread::sleep_for(std::chrono::seconds(1));
-
-                if (minerMode == "stratum") 
-                    authorizeStratum();
-                else 
-                    authorizePool();
-
-                startGetWork();
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                printf("Starting miners...\n");
-                for (int i = 0; i < miners.size(); i++)
-                    miners[i]->pause = false;
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                printf("Restart complete\n\n");
+                    printf("Starting miners...\n");
+                    for (int i = 0; i < miners.size(); i++)
+                        miners[i]->pause = false;
+                    std::this_thread::sleep_for(std::chrono::seconds(3));
+                    printf("Restart complete\n\n");
+                }
             }
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
 }

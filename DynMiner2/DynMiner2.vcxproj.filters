@@ -63,4 +63,7 @@
   <ItemGroup>
     <None Include="dyn_miner3.cl" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="test_algo.txt" />
+  </ItemGroup>
 </Project>

@@ -414,7 +414,7 @@ void cMiner::runProgram(unsigned char* myHeader, std::vector<unsigned int> byteC
             uint64_t col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
             uint64_t index = row * 32768 + col;
             const uint64_t hashBlockSize = 1024ULL * 1024ULL * 3072ULL;
-            for (int i = 0; i < 256; i++) 
+            for (int i = 0; i < 128; i++) 
                 myHashResult[i % 8] += hashBlock[(index + i) % hashBlockSize ];
 
             linePtr++;
@@ -698,4 +698,235 @@ cl_program cMiner::loadMiner(cl_context context, cl_device_id* deviceID, int gpu
 
     return program;
 
+}
+
+
+void cMiner::startTestCPUMiner(unsigned char* hashBlock) {
+
+
+
+}
+
+
+void cMiner::startTestGPUMiner(unsigned char* hashBlock) {
+
+
+    cl_int returnVal;
+    cl_device_id* device_id = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
+    cl_uint ret_num_platforms;
+
+    cl_ulong globalMem;
+    cl_uint computeUnits;
+    size_t sizeRet;
+    uint32_t numOpenCLDevices;
+
+    cl_platform_id*  platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
+    returnVal = clGetPlatformIDs(16, platform_id, &ret_num_platforms);
+
+    if (ret_num_platforms <= 0) {
+        printf("No OpenCL platforms detected.\n");
+        exit(0);
+    }
+
+    for (uint32_t i = 0; i < ret_num_platforms; i++) {
+        returnVal = clGetDeviceIDs(platform_id[i], CL_DEVICE_TYPE_GPU, 16, device_id, &numOpenCLDevices);
+        for (uint32_t j = 0; j < numOpenCLDevices; j++) {
+
+            printf("Testing platform %d, device %d\n", i, j);
+
+            testOneGPU(i, j, hashBlock);        //note this is overridden from text file - need a more elegant way to test multiple/different cards eventually
+        }
+    }
+
+}
+
+
+
+void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock) {
+
+    uint32_t gpuLoops = 1;
+    
+
+
+    string strProgram;
+    cProgramVM* programVM = new cProgramVM();
+
+    std::ifstream tff("test_algo.txt");
+    std::stringstream buffer;
+    buffer << tff.rdbuf();
+    strProgram = buffer.str();
+
+
+	stringstream stream(strProgram);
+	string line;
+	vector<string> vprogram{};
+
+    getline(stream, line, '\n');        //platform
+    platformID = atoi(line.c_str());
+
+    getline(stream, line, '\n');        //device
+    deviceID = atoi(line.c_str());
+
+    getline(stream, line, '\n');        //compute unit
+    size_t computeUnits = atoi(line.c_str());
+
+    getline(stream, line, '\n');        //worksize
+    uint32_t gpuWorkSize = atoi(line.c_str());
+
+	while (getline(stream, line, '\n')) {
+		vprogram.push_back(line);
+	}
+	vprogram.push_back("ENDPROGRAM");
+
+	programVM->byteCode.clear();
+    unsigned char junk[32];
+	programVM->generateBytecode(vprogram, junk, junk);
+
+
+
+    cl_int returnVal; 
+    cl_uint ret_num_platforms;
+    cl_uint numOpenCLDevices;
+
+    cl_mem clGPUProgramBuffer;
+
+    uint32_t hashResultSize;
+    cl_mem clGPUHashResultBuffer;
+    uint32_t* buffHashResult;
+
+    uint32_t headerBuffSize;
+    cl_mem clGPUHeaderBuffer;
+    unsigned char* buffHeader;
+
+    uint32_t nonceBuffSize;
+    cl_mem clNonceBuffer;
+    uint32_t* buffNonce;
+
+    cl_mem clProgStartTime;
+
+    cl_mem clMemgenBuffer;
+    unsigned char* memGenBuffer;
+
+    unsigned char* seedBlock;
+
+    cl_mem clHashBlock;
+
+    cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
+    cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
+
+    checkReturn("clGetPlatformIDs", clGetPlatformIDs(16, platform_id, &ret_num_platforms));
+    checkReturn("clGetDeviceIDs", clGetDeviceIDs(platform_id[platformID], CL_DEVICE_TYPE_GPU, 16, open_cl_devices, &numOpenCLDevices));
+    cl_context context = clCreateContext(NULL, 1, &open_cl_devices[deviceID], NULL, NULL, &returnVal);
+
+    cl_ulong maxMemAlloc;
+    size_t sizeRet;
+    clGetDeviceInfo(open_cl_devices[deviceID], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(cl_ulong), &maxMemAlloc, &sizeRet);
+
+
+    cl_program program = loadMiner(context, &open_cl_devices[deviceID], 1);
+
+    kernel = clCreateKernel(program, "dyn_hash", &returnVal);
+    commandQueue = clCreateCommandQueueWithProperties(context, open_cl_devices[deviceID], NULL, &returnVal);
+
+    size_t programBufferSize = 8192;  //getWork->programVM->byteCode.size() * 4
+    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, programBufferSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - program", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
+
+    hashResultSize = computeUnits * 32;
+    clGPUHashResultBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, hashResultSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - hash", clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clGPUHashResultBuffer));
+    buffHashResult = (uint32_t*)malloc(hashResultSize);
+
+    headerBuffSize = 80;
+    clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, headerBuffSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - header", returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer));
+    buffHeader = (unsigned char*)malloc(headerBuffSize);
+
+    nonceBuffSize = sizeof(cl_uint) * 0x100;
+    
+    clNonceBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, nonceBuffSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - nonce", clSetKernelArg(kernel, 3, sizeof(cl_mem), (void*)&clNonceBuffer));
+    buffNonce = (uint32_t*)malloc(nonceBuffSize);
+
+
+    size_t memgenBufferSize = 32 * 8 * computeUnits * sizeof(uint32_t);        //TODO - analyze program to find maximum memgen size
+    clMemgenBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, memgenBufferSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
+
+
+    size_t hashBockSize = 1024ULL * 1024ULL * 3072ULL;
+    clHashBlock = clCreateBuffer(context, CL_MEM_READ_WRITE, hashBockSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*)&clHashBlock));
+
+    memset(hashBlock, 0, hashBockSize);
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
+
+
+    while (true) {
+
+        if (!pause) {
+
+            int workID;
+
+            memset(buffHeader, 0, 80);
+
+            checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, programVM->byteCode.size() * 4, programVM->byteCode.data(), 0, NULL, NULL));
+            
+            uint64_t target = 10;
+            checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+
+/*
+            if (getWork->miningMode == "solo") {
+                target = BSWAP64(((uint64_t*)getWork->nativeTarget)[0]);
+                //checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &getWork->targetZeros));
+                checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+            }
+            else if ((getWork->miningMode == "stratum") || (getWork->miningMode == "pool")) {
+                target = share_to_target(getWork->difficultyTarget) * 65536;
+                //checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &getWork->targetZeros));
+                checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
+            }
+            */
+
+            //getWork->lockJob.unlock();
+
+            // WARNING: what if they have multiple platforms?
+            //uint32_t MinNonce = (0xFFFFFFFFULL / numOpenCLDevices) * GPUIndex;
+            //uint32_t MaxNonce = MinNonce + (0xFFFFFFFFULL / numOpenCLDevices);
+
+            uint32_t nonce = 0;
+
+            time_t start;
+            time(&start);
+
+            while (true) {
+                nonce += computeUnits * gpuLoops;
+
+                memcpy(&buffHeader[76], &nonce, 4);
+                uint32_t zero = 0;
+                size_t gOffset = nonce;
+
+                checkReturn("clEnqueueWriteBuffer - header", clEnqueueWriteBuffer(commandQueue, clGPUHeaderBuffer, CL_TRUE, 0, headerBuffSize, buffHeader, 0, NULL, NULL));
+                checkReturn("clEnqueueWriteBuffer - NonceRetBuf", clEnqueueWriteBuffer(commandQueue, clNonceBuffer, CL_TRUE, sizeof(cl_uint) * 0xFF, sizeof(cl_uint), &zero, 0, NULL, NULL));
+                size_t localWorkSize = gpuWorkSize;
+                checkReturn("clEnqueueNDRangeKernel", clEnqueueNDRangeKernel(commandQueue, kernel, 1, &gOffset, &computeUnits, &localWorkSize, 0, NULL, NULL));
+                checkReturn("clFinish", clFinish(commandQueue));
+                checkReturn("clEnqueueReadBuffer - nonce", clEnqueueReadBuffer(commandQueue, clNonceBuffer, CL_TRUE, 0, sizeof(cl_uint) * 0x100, buffNonce, 0, NULL, NULL));
+
+                time_t now;
+                time(&now);
+
+                if (now - start >= 10) {
+                    printf("%u\n", nonce / 10);
+                    nonce = 0;
+                    time(&start);
+                }
+
+            }
+        }
+        else
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    }
+    
 }

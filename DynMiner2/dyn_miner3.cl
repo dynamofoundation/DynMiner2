@@ -621,18 +621,18 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     uint prevHashSHA[8];
     sha256(32, &myHeader[1], prevHashSHA);
 
-    __global uint* myMemGen = &global_memgen[computeUnitID * 512 * 8];
+    __global uint* myMemGen = &global_memgen[computeUnitID * 32 * 8];
     uint tempStore[8];
     
     
     uint hashCount = 0;
-    while (hashCount < GPU_LOOPS) {
+    //while (hashCount < GPU_LOOPS) {
 
         /*
         if (get_global_id(0) != 0)
             return;
 
-        /*
+        
         unsigned char* hh = myHeader;
         for (int i = 0; i < 80; i++)
             printf("%02X", hh[i]);
@@ -910,7 +910,7 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
 
         if (c > target) {
             
-            /*
+            
             __global unsigned char* ptr = &myHeader;
 
             printf("Header %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
@@ -960,13 +960,13 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
               */
 
 			NonceRetBuf[atomic_inc(NonceRetBuf + 0xFF)] = nonce;
-			break;	// we are solo mining, any other solutions will go to waste anyhow
+			//break;	// we are solo mining, any other solutions will go to waste anyhow
 		}
         
 		
-        hashCount++;
-        nonce++;
-        myHeader[19] = nonce;
-	}
+       // hashCount++;
+      //  nonce++;
+      //  myHeader[19] = nonce;
+	//}
 
 }

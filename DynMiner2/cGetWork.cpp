@@ -582,19 +582,6 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
         hex2bin(wtree[i + 1], strTransactionHash.c_str(), 32);
         memrev(wtree[1 + i], 32);
     }
-    /*
-    for (int i = 0; i < tx_count; i++) {
-        const json_t* tx = json_array_get(txa, i);
-        const json_t* hash = json_object_get(tx, "hash");
-        if (!hash || !hex2bin(wtree[1 + i], json_string_value(hash), 32)) {
-            applog(LOG_ERR, "JSON invalid transaction hash");
-            free(wtree);
-            goto out;
-        }
-        memrev(wtree[1 + i], 32);
-    }
-    */
-
 
     int n = tx_count + 1;
     while (n > 1) {
@@ -612,13 +599,10 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     cbtx_size += 32;
     free(wtree);
 
-
-
     le32enc((uint32_t*)(cbtx + cbtx_size), 0);      //  tx out lock time
     cbtx_size += 4;
 
     unsigned char txc_vi[9];
-
 
     n = varint_encode(txc_vi, 1 + tx_count);
     if (transactionString != NULL)
@@ -633,23 +617,18 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     //create merkle root
 
     tree_entry* merkle_tree = (tree_entry*)malloc(32 * ((1 + tx_count + 1) & ~1));
-    //size_t tx_buf_size = 32 * 1024;
-    //unsigned char *tx = (unsigned char*)malloc(tx_buf_size);
     sha256d(merkle_tree[0], cbtx, cbtx_size);
 
     for (int i = 0; i < tx_count; i++) {
         std::string tx_hex = jtransactions[i]["data"];
         const size_t tx_hex_len = tx_hex.length();
-        const int tx_size = tx_hex_len / 2;
+       // const int tx_size = tx_hex_len / 2;
         std::string txid = jtransactions[i]["txid"];
         hex2bin(merkle_tree[1 + i], txid.c_str(), 32);
         memrev(merkle_tree[1 + i], 32);
         memcpy(txs_end, tx_hex.c_str(), tx_hex.length());
         txs_end += tx_hex_len;
     }
-
-    //free(tx); 
-    //tx = NULL;
 
     n = 1 + tx_count;
     while (n > 1) {

@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <mutex>
+#include <fstream>
 #include <CL/cl.h>
 #include <CL/cl_platform.h>
 
@@ -45,6 +46,11 @@ public:
 	void runProgram(unsigned char* header, std::vector<unsigned int> program, unsigned int* hash, CSHA256 _sha256, unsigned char* hashBlock);
 	vector<string> split(string str, string token);
 	cl_program loadMiner(cl_context context, cl_device_id* deviceID, int gpuLoops);
+
+	void startTestCPUMiner(unsigned char* hashBlock);
+	void startTestGPUMiner(unsigned char* hashBlock);
+	void testOneGPU( int platformID, int deviceID, unsigned char* hashBlock);
+
 
 	cl_kernel kernel;
 	cl_command_queue commandQueue;
