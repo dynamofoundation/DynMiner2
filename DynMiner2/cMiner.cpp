@@ -4,6 +4,9 @@
 #include "cStatDisplay.h"
 #include "cProgramVM.h"
 
+#include <iomanip>
+#include <locale>
+
 uint64_t BSWAP64(uint64_t x)
 {
 	return  ( (x << 56) & 0xff00000000000000UL ) |
@@ -808,7 +811,9 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
 
     unsigned char* seedBlock;
 
-    cl_mem clHashBlock;
+    cl_mem clHashBlock1;
+    cl_mem clHashBlock2;
+    cl_mem clHashBlock3;
 
     cl_platform_id* platform_id = (cl_platform_id*)malloc(16 * sizeof(cl_platform_id));
     cl_device_id* open_cl_devices = (cl_device_id*)malloc(16 * sizeof(cl_device_id));
@@ -828,7 +833,7 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
     commandQueue = clCreateCommandQueueWithProperties(context, open_cl_devices[deviceID], NULL, &returnVal);
 
     size_t programBufferSize = 8192;  //getWork->programVM->byteCode.size() * 4
-    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, programBufferSize, NULL, &returnVal);
+    clGPUProgramBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, programBufferSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - program", clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clGPUProgramBuffer));
 
     hashResultSize = computeUnits * 32;
@@ -837,7 +842,7 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
     buffHashResult = (uint32_t*)malloc(hashResultSize);
 
     headerBuffSize = 80;
-    clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, headerBuffSize, NULL, &returnVal);
+    clGPUHeaderBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY, headerBuffSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - header", returnVal = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clGPUHeaderBuffer));
     buffHeader = (unsigned char*)malloc(headerBuffSize);
 
@@ -848,18 +853,26 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
     buffNonce = (uint32_t*)malloc(nonceBuffSize);
 
 
-    size_t memgenBufferSize = 32 * 8 * computeUnits * sizeof(uint32_t);        //TODO - analyze program to find maximum memgen size
+    size_t memgenBufferSize = 128 * 8 * computeUnits * sizeof(uint32_t);        //TODO - analyze program to find maximum memgen size
     clMemgenBuffer = clCreateBuffer(context, CL_MEM_READ_WRITE, memgenBufferSize, NULL, &returnVal);
     checkReturn("clSetKernelArg - clMemgenBuffer", clSetKernelArg(kernel, 5, sizeof(cl_mem), (void*)&clMemgenBuffer));
 
+    /*
+    size_t hashBockSize = 1024ULL * 1024ULL * 1024ULL;
+    clHashBlock1 = clCreateBuffer(context, CL_MEM_READ_ONLY, hashBockSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*)&clHashBlock1));
 
-    size_t hashBockSize = 1024ULL * 1024ULL * 3072ULL;
-    clHashBlock = clCreateBuffer(context, CL_MEM_READ_WRITE, hashBockSize, NULL, &returnVal);
-    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 6, sizeof(cl_mem), (void*)&clHashBlock));
+    clHashBlock2 = clCreateBuffer(context, CL_MEM_READ_ONLY, hashBockSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 7, sizeof(cl_mem), (void*)&clHashBlock2));
+
+    clHashBlock3 = clCreateBuffer(context, CL_MEM_READ_ONLY, hashBockSize, NULL, &returnVal);
+    checkReturn("clSetKernelArg - clHashBlock", clSetKernelArg(kernel, 8, sizeof(cl_mem), (void*)&clHashBlock3));
 
     memset(hashBlock, 0, hashBockSize);
-    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
-
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock1, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock2, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
+    checkReturn("clEnqueueWriteBuffer - hashblock", clEnqueueWriteBuffer(commandQueue, clHashBlock3, CL_TRUE, 0, hashBockSize, hashBlock, 0, NULL, NULL));
+    */
 
     while (true) {
 
@@ -871,7 +884,7 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
 
             checkReturn("clEnqueueWriteBuffer - program", clEnqueueWriteBuffer(commandQueue, clGPUProgramBuffer, CL_TRUE, 0, programVM->byteCode.size() * 4, programVM->byteCode.data(), 0, NULL, NULL));
             
-            uint64_t target = 10;
+            uint64_t target = 0x00000000FFFFFFFF;
             checkReturn("clSetKernelArg - target", clSetKernelArg(kernel, 4, sizeof(cl_ulong), &target));
 
 /*
@@ -915,8 +928,16 @@ void cMiner::testOneGPU( int platformID, int deviceID, unsigned char* hashBlock)
                 time_t now;
                 time(&now);
 
+                //printf("x");
+
                 if (now - start >= 10) {
-                    printf("%u\n", nonce / 10);
+                    int nn = nonce / 10;
+    std::stringstream ss;
+    ss.imbue(std::locale(""));
+    ss << std::fixed << nn;
+    
+
+                    printf("%s\n", ss.str().c_str());
                     nonce = 0;
                     time(&start);
                 }
