@@ -40,10 +40,10 @@ using namespace std;
 class cMiner
 {
 public:
-	void startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay* statDisplay, uint32_t GPUIndex, unsigned char* hashBlock);
-	void startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops, unsigned char* hashBlock);
-	void startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDisplay* statDisplay, int cpuIndex, unsigned int startNonce, unsigned char* hashBlock);
-	void runProgram(unsigned char* header, std::vector<unsigned int> program, unsigned int* hash, CSHA256 _sha256, unsigned char* hashBlock);
+	void startMiner(string params, cGetWork *getWork, cSubmitter* submitter, cStatDisplay* statDisplay, uint32_t GPUIndex);
+	void startGPUMiner(const size_t computeUnits, int platformID, int deviceID, cGetWork *getWork, cSubmitter* submitter, cStatDisplay *statDisplay, size_t gpuWorkSize, uint32_t GPUIndex, int gpuLoops);
+	void startCPUMiner(cGetWork* getWork, cSubmitter* submitter, cStatDisplay* statDisplay, int cpuIndex, unsigned int startNonce);
+	void runProgram(unsigned char* header, std::vector<unsigned int> program, unsigned int* hash, CSHA256 _sha256);
 	vector<string> split(string str, string token);
 	cl_program loadMiner(cl_context context, cl_device_id* deviceID, int gpuLoops);
 
