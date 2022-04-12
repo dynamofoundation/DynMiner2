@@ -1,4 +1,4 @@
-#define VERSION 3.1
+#define VERSION 3.2
 #ifndef uint32_t
 #define uint32_t unsigned int
 #endif
