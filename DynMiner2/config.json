@@ -1,0 +1,8 @@
+{
+
+  "mode": "pool",
+  "server": "pool1.dynamocoin.org",
+  "port": "4567",
+  "user": "dy1qsmzapfdxxk4mxxqgusrkep7wee3mwa8n6q6pfm",
+  "miner": "GPU,1048576,512,0,0"
+}
