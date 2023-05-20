@@ -591,6 +591,9 @@ void cMiner::startGPUMiner(const size_t computeUnits, int platformID, int device
                 uint32_t zero = 0;
                 size_t gOffset = nonce;
 
+                //hex2bin(buffHeader, "400000000000aa91b8738f8c886ea3deb31125566cfaf873875f2548b8d4a1e98a55bf76993be33bb745baa1fadb1ac7c7ddedd2350dc937ea885fb99043d8da8d610b46c1146864ffff001ff1ca0000", 160);
+
+
                 checkReturn("clEnqueueWriteBuffer - header", clEnqueueWriteBuffer(commandQueue, clGPUHeaderBuffer, CL_TRUE, 0, headerBuffSize, buffHeader, 0, NULL, NULL));
                 checkReturn("clEnqueueWriteBuffer - NonceRetBuf", clEnqueueWriteBuffer(commandQueue, clNonceBuffer, CL_TRUE, sizeof(cl_uint) * 0xFF, sizeof(cl_uint), &zero, 0, NULL, NULL));
                 size_t localWorkSize = gpuWorkSize;

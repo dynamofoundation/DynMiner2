@@ -21,7 +21,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
-#include <curl\curl.h>
+#include <curl/curl.h>
 #endif
 
 class cStatDisplay;

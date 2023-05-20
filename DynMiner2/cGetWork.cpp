@@ -491,11 +491,11 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
 
     //decode pay to address for developer
     static unsigned char pk_script_dev[25] = { 0 };
-    std::string payToAddressDev("dy1qzvx3yfrucqa2ntsw8e7dyzv6u6dl2c2wjvx5jy");
+    std::string payToAddressDev("dy1qyyyzxcaeld33wqgpae68lvl57nes5k4jj82pj3");
     int pk_script_size_dev = address_to_script(pk_script_dev, sizeof(pk_script_dev), payToAddressDev.c_str());
 
     static unsigned char pk_script_charity[25] = { 0 };
-    std::string payToAddressCharity("dy1qnt3gjkefzez7my4zmwx9w0xs3c2jcxks6kxrgp");
+    std::string payToAddressCharity("dy1qyyyzxcaeld33wqgpae68lvl57nes5k4jj82pj3");    
     int pk_script_size_charity = address_to_script(pk_script_charity, sizeof(pk_script_charity), payToAddressCharity.c_str());
 
 
@@ -545,7 +545,7 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     cbtx_size += pk_script_size;
 
     //coinbase to developer
-    int64_t devFee = 5000000;
+    int64_t devFee = 0;
     le32enc((uint32_t*)(cbtx + cbtx_size), (uint32_t)devFee);          //tx out amount
     le32enc((uint32_t*)(cbtx + cbtx_size + 4), devFee >> 32);
     cbtx_size += 8;
@@ -554,7 +554,7 @@ void cGetWork::setJobDetailsSolo(json result, uint32_t extranonce, string coinba
     cbtx_size += pk_script_size_dev;
 
     //coinbase to charity
-    int64_t charityFee = 5000000;
+    int64_t charityFee = 0;
     le32enc((uint32_t*)(cbtx + cbtx_size), (uint32_t)charityFee);          //tx out amount
     le32enc((uint32_t*)(cbtx + cbtx_size + 4), charityFee >> 32);
     cbtx_size += 8;

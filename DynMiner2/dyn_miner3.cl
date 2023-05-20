@@ -15,7 +15,7 @@ unsigned int SWAP (unsigned int val)
     return(as_uint(as_uchar4(val).s3210));
 }
 
-//#define OLD_SHA256
+#define OLD_SHA256
 
 #ifdef OLD_SHA256
 
@@ -550,13 +550,6 @@ static void sha256 ( uint pass_len,  const unsigned int *pass,  uint *hash)
 #endif
 
 
-
-
-
-
-
-
-
 static inline uint CLZz(uint x)
 {
     x |= x >> 1;
@@ -626,349 +619,279 @@ __kernel void dyn_hash (__global uint* byteCode, __global uint* hashResult, __gl
     
     
     uint hashCount = 0;
-    //while (hashCount < GPU_LOOPS) {
 
-        /*
-        if (get_global_id(0) != 0)
-            return;
+    
+    ///DEBUG
+    /*
+    if (get_global_id(0) != 0)
+        return;
 
-        
-        unsigned char* hh = myHeader;
-        for (int i = 0; i < 80; i++)
-            printf("%02X", hh[i]);
-        printf("\n");
-        */
+    unsigned char* hh = myHeader;
+    printf("%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X\n", 
+    hh[0], hh[1], hh[2], hh[3], hh[4], hh[5], hh[6], hh[7], hh[8], hh[9],  
+    hh[10], hh[11], hh[12], hh[13], hh[14], hh[15], hh[16], hh[17], hh[18], hh[19],  
+    hh[20], hh[21], hh[22], hh[23], hh[24], hh[25], hh[26], hh[27], hh[28], hh[29],  
+    hh[30], hh[31], hh[32], hh[33], hh[34], hh[35], hh[36], hh[37], hh[38], hh[39],  
+    hh[40], hh[41], hh[42], hh[43], hh[44], hh[45], hh[46], hh[47], hh[48], hh[49],  
+    hh[50], hh[51], hh[52], hh[53], hh[54], hh[55], hh[56], hh[57], hh[58], hh[59],  
+    hh[60], hh[61], hh[62], hh[63], hh[64], hh[65], hh[66], hh[67], hh[68], hh[69],  
+    hh[70], hh[71], hh[72], hh[73], hh[74], hh[75], hh[76], hh[77], hh[78], hh[79]
+    );    
+    ///DEBUG
+    */    
 
-            sha256(80, myHeader, myHashResult);
-
-
-
-            uint linePtr = 0;
-            uint done = 0;
-            uint currentMemSize = 0;
-            uint instruction = 0;
-
-            uint loop_opcode_count;
-            uint loop_line_ptr;
+    sha256(80, myHeader, myHashResult);
 
 
-            while (1) {
 
-                /*
-                printf("%08X%08X%08X%08X%08X%08X%08X%08X",
-                    myHashResult[0],
-                    myHashResult[1],
-                    myHashResult[2],
-                    myHashResult[3],
-                    myHashResult[4],
-                    myHashResult[5],
-                    myHashResult[6],
-                    myHashResult[7]
-                    );
-                  */  
+        uint linePtr = 0;
+        uint done = 0;
+        uint currentMemSize = 0;
+        uint instruction = 0;
 
-                if (byteCode[linePtr] == HASHOP_ADD) {
-                    linePtr++;
-                    for (int i = 0; i < 8; i++)
-                        myHashResult[i] += byteCode[linePtr + i];
-                    linePtr += 8;
-                }
+        uint loop_opcode_count;
+        uint loop_line_ptr;
 
 
-                else if (byteCode[linePtr] == HASHOP_XOR) {
-                    linePtr++;
-                    for (int i = 0; i < 8; i++)
-                        myHashResult[i] ^= byteCode[linePtr + i];
-                    linePtr += 8;
-                }
+        while (1) {
 
-
-                else if (byteCode[linePtr] == HASHOP_SHA_SINGLE) {
-                    sha256(32, myHashResult, myHashResult);
-                    linePtr++;
-                }
-
-
-                else if (byteCode[linePtr] == HASHOP_SHA_LOOP) {
-                    linePtr++;
-                    uint loopCount = byteCode[linePtr];
-                    for (int i = 0; i < loopCount; i++) {
-                        sha256(32, myHashResult, myHashResult);
-                    }
-                    linePtr++;
-                }
-
-
-                else if (byteCode[linePtr] == HASHOP_MEMGEN) {
-                    linePtr++;
-
-                    currentMemSize = byteCode[linePtr];
-
-                    for (int i = 0; i < currentMemSize; i++) {
-                        sha256(32, myHashResult, myHashResult);
-                        for (int j = 0; j < 8; j++)
-                            myMemGen[i*8+j] = myHashResult[j];
-                    }
-
-
-                    linePtr++;
-                }
-
-
-                else if (byteCode[linePtr] == HASHOP_MEMADD) {
-                    linePtr++;
-
-                    for (int i = 0; i < currentMemSize; i++)
-                        for (int j = 0; j < 8; j++)
-                            myMemGen[i*8+j] += byteCode[linePtr + j];
-
-                    linePtr += 8;
-                }
-
-                else if (byteCode[linePtr] == HASHOP_MEMADDHASHPREV) {
-                    linePtr++;
-
-                    for (int i = 0; i < currentMemSize; i++)
-                        for (int j = 0; j < 8; j++) {
-                            myMemGen[i * 8 + j] += myHashResult[j] + prevHashSHA[j];
-                        }
-
-                }
-
-
-                else if (byteCode[linePtr] == HASHOP_MEMXOR) {
-                    linePtr++;
-
-                    for (int i = 0; i < currentMemSize; i++)
-                        for (int j = 0; j < 8; j++)
-                            myMemGen[i * 8 + j] ^= byteCode[linePtr + j];
-
-                    linePtr += 8;
-                }
-
-                else if (byteCode[linePtr] == HASHOP_MEMXORHASHPREV) {
-                    linePtr++;
-
-                    for (int i = 0; i < currentMemSize; i++)
-                        for (int j = 0; j < 8; j++) {
-                            myMemGen[i * 8 + j] += myHashResult[j];
-                            myMemGen[i * 8 + j] ^= prevHashSHA[j];
-                        }
-
-                }
-
-
-                else if (byteCode[linePtr] == HASHOP_MEM_SELECT) {
-                    linePtr++;
-                    uint index = byteCode[linePtr] % currentMemSize;
-                    for (int j = 0; j < 8; j++)
-                        myHashResult[j] = myMemGen[index*8 + j];
-
-                    linePtr++;
-                }
-
-                else if (byteCode[linePtr] == HASHOP_READMEM2) {
-                    linePtr++;
-                    if (byteCode[linePtr] == 0) {
-                        for (int i = 0; i < 8; i++)
-                            myHashResult[i] ^= prevHashSHA[i];
-                    }
-                    else if (byteCode[linePtr] == 1) {
-                        for (int i = 0; i < 8; i++)
-                            myHashResult[i] += prevHashSHA[i];
-                    }
-
-                    linePtr++;  //this is the source, only supports prev hash currently
-
-                    uint index = 0;
-                    for (int i = 0; i < 8; i++)
-                        index += myHashResult[i];
-
-
-                    index = index % currentMemSize;
-
-                    for (int j = 0; j < 8; j++)
-                        myHashResult[j] = myMemGen[index*8+j];
-
-                    linePtr++;
-
-                }
-
-                else if (byteCode[linePtr] == HASHOP_LOOP) {
-                    loop_opcode_count = 0;
-                    for (int j = 0; j < 8; j++)
-                        loop_opcode_count += myHashResult[j];
-
-                    linePtr++;
-                    loop_opcode_count = loop_opcode_count % byteCode[linePtr] + 1;
-
-                    linePtr++;
-                    loop_line_ptr = linePtr;        //line to return to after endloop
-                }
-
-                else if (byteCode[linePtr] == HASHOP_ENDLOOP) {
-                    linePtr++;
-                    loop_opcode_count--;
-                    if (loop_opcode_count > 0)
-                        linePtr = loop_line_ptr;
-                }
-
-                else if (byteCode[linePtr] == HASHOP_IF) {
-                    linePtr++;
-                    uint sum = 0;
-                    for (int j = 0; j < 8; j++)
-                        sum += myHashResult[j];
-                    sum = sum % byteCode[linePtr];
-                    linePtr++;
-                    uint numToSkip = byteCode[linePtr];
-                    linePtr++;
-                    if (sum == 0) {
-                        linePtr += numToSkip;
-                    }
-                }
-
-                else if (byteCode[linePtr] == HASHOP_STORETEMP) {
-                    for (int j = 0; j < 8; j++)
-                        tempStore[j] = myHashResult[j];
-
-                    linePtr++;
-                }
-
-                else if (byteCode[linePtr] == HASHOP_EXECOP) {
-                    linePtr++;
-                    //next byte is source  (hard coded to temp)
-                    linePtr++;
-
-                    uint sum = 0;
-                    for (int j = 0; j < 8; j++)
-                        sum += myHashResult[j];
-
-                    if (sum % 3 == 0) {
-                        for (int i = 0; i < 8; i++)
-                            myHashResult[i] += tempStore[i];
-                    }
-
-                    else if (sum % 3 == 1) {
-                        for (int i = 0; i < 8; i++)
-                            myHashResult[i] ^= tempStore[i];
-                    }
-
-                    else if (sum % 3 == 2) {
-                        sha256(32, myHashResult, myHashResult);
-                    }
-
-                }
-
-                /*
-                else if (byteCode[linePtr] == HASHOP_SUMBLOCK) {
-                    //this calc can be optimized, although the performance gain is minimal
-                    unsigned long row = (myHashResult[0] + myHashResult[1] + myHashResult[2] + myHashResult[3]) % 3072;
-                    unsigned long col = (myHashResult[4] + myHashResult[5] + myHashResult[6] + myHashResult[7]) % 32768;
-                    unsigned long index = row * 32768 + col;
-                    const unsigned long hashBlockSize = 1024UL * 1024UL * 3072UL;
-                    for (int i = 0; i < 128; i++)
-                        myHashResult[i % 8] += global_hashblock[(index + i) % hashBlockSize];
-                    linePtr++;
-                }
+            ///DEBUG
+            /*
+            printf("%08X%08X%08X%08X%08X%08X%08X%08X\n",
+                myHashResult[0],
+                myHashResult[1],
+                myHashResult[2],
+                myHashResult[3],
+                myHashResult[4],
+                myHashResult[5],
+                myHashResult[6],
+                myHashResult[7]
+                );
                 */
+            ///DEBUG
+                 
+
+            if (byteCode[linePtr] == HASHOP_ADD) {
+                linePtr++;
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] += byteCode[linePtr + i];
+                linePtr += 8;
+            }
 
 
-                else if (byteCode[linePtr] == HASHOP_END) {
-                    break;
+            else if (byteCode[linePtr] == HASHOP_XOR) {
+                linePtr++;
+                for (int i = 0; i < 8; i++)
+                    myHashResult[i] ^= byteCode[linePtr + i];
+                linePtr += 8;
+            }
+
+
+            else if (byteCode[linePtr] == HASHOP_SHA_SINGLE) {
+                sha256(32, myHashResult, myHashResult);
+                linePtr++;
+            }
+
+
+            else if (byteCode[linePtr] == HASHOP_SHA_LOOP) {
+                linePtr++;
+                uint loopCount = byteCode[linePtr];
+                for (int i = 0; i < loopCount; i++) {
+                    sha256(32, myHashResult, myHashResult);
+                }
+                linePtr++;
+            }
+
+
+            else if (byteCode[linePtr] == HASHOP_MEMGEN) {
+                linePtr++;
+
+                currentMemSize = byteCode[linePtr];
+
+                for (int i = 0; i < currentMemSize; i++) {
+                    sha256(32, myHashResult, myHashResult);
+                    for (int j = 0; j < 8; j++)
+                        myMemGen[i*8+j] = myHashResult[j];
                 }
 
-        }
-		
+                linePtr++;
+            }
 
 
-        /*
-        uint test[8];
-        for (int ii = 0; ii < 8; ii++)
-            test[ii] = endianSwap(myHashResult[ii]);
+            else if (byteCode[linePtr] == HASHOP_MEMADD) {
+                linePtr++;
 
-        uint c = CLZz(test[0]);
-        if (c == 32) {
-            c += CLZz(test[1]);
-            if (c == 64) {
-                c += CLZz(test[2]);
-                if (c == 96) {
-                    c += CLZz(test[3]);
-                    if (c == 128) {
-                        c += CLZz(test[4]);
-                        if (c == 160) {
-                            c += CLZz(test[5]);
-                            if (c == 192) {
-                                c += CLZz(test[6]);
-                                if (c == 224) {
-                                    c += CLZz(test[7]);
-                                }
-                            }
-                        }
+                for (int i = 0; i < currentMemSize; i++)
+                    for (int j = 0; j < 8; j++)
+                        myMemGen[i*8+j] += byteCode[linePtr + j];
+
+                linePtr += 8;
+            }
+
+            else if (byteCode[linePtr] == HASHOP_MEMADDHASHPREV) {
+                linePtr++;
+
+                for (int i = 0; i < currentMemSize; i++)
+                    for (int j = 0; j < 8; j++) {
+                        myMemGen[i * 8 + j] += myHashResult[j] + prevHashSHA[j];
                     }
+
+            }
+
+
+            else if (byteCode[linePtr] == HASHOP_MEMXOR) {
+                linePtr++;
+
+                for (int i = 0; i < currentMemSize; i++)
+                    for (int j = 0; j < 8; j++)
+                        myMemGen[i * 8 + j] ^= byteCode[linePtr + j];
+
+                linePtr += 8;
+            }
+
+            else if (byteCode[linePtr] == HASHOP_MEMXORHASHPREV) {
+                linePtr++;
+
+                for (int i = 0; i < currentMemSize; i++)
+                    for (int j = 0; j < 8; j++) {
+                        myMemGen[i * 8 + j] += myHashResult[j];
+                        myMemGen[i * 8 + j] ^= prevHashSHA[j];
+                    }
+
+            }
+
+
+            else if (byteCode[linePtr] == HASHOP_MEM_SELECT) {
+                linePtr++;
+                uint index = byteCode[linePtr] % currentMemSize;
+                for (int j = 0; j < 8; j++)
+                    myHashResult[j] = myMemGen[index*8 + j];
+
+                linePtr++;
+            }
+
+            else if (byteCode[linePtr] == HASHOP_READMEM2) {
+                linePtr++;
+                if (byteCode[linePtr] == 0) {
+                    for (int i = 0; i < 8; i++)
+                        myHashResult[i] ^= prevHashSHA[i];
+                }
+                else if (byteCode[linePtr] == 1) {
+                    for (int i = 0; i < 8; i++)
+                        myHashResult[i] += prevHashSHA[i];
+                }
+
+                linePtr++;  //this is the source, only supports prev hash currently
+
+                uint index = 0;
+                for (int i = 0; i < 8; i++)
+                    index += myHashResult[i];
+
+
+                index = index % currentMemSize;
+
+                for (int j = 0; j < 8; j++)
+                    myHashResult[j] = myMemGen[index*8+j];
+
+                linePtr++;
+
+            }
+
+            else if (byteCode[linePtr] == HASHOP_LOOP) {
+                loop_opcode_count = 0;
+                for (int j = 0; j < 8; j++)
+                    loop_opcode_count += myHashResult[j];
+
+                linePtr++;
+                loop_opcode_count = loop_opcode_count % byteCode[linePtr] + 1;
+
+                linePtr++;
+                loop_line_ptr = linePtr;        //line to return to after endloop
+            }
+
+            else if (byteCode[linePtr] == HASHOP_ENDLOOP) {
+                linePtr++;
+                loop_opcode_count--;
+                if (loop_opcode_count > 0)
+                    linePtr = loop_line_ptr;
+            }
+
+            else if (byteCode[linePtr] == HASHOP_IF) {
+                linePtr++;
+                uint sum = 0;
+                for (int j = 0; j < 8; j++)
+                    sum += myHashResult[j];
+                sum = sum % byteCode[linePtr];
+                linePtr++;
+                uint numToSkip = byteCode[linePtr];
+                linePtr++;
+                if (sum == 0) {
+                    linePtr += numToSkip;
                 }
             }
-        }
+
+            else if (byteCode[linePtr] == HASHOP_STORETEMP) {
+                for (int j = 0; j < 8; j++)
+                    tempStore[j] = myHashResult[j];
+
+                linePtr++;
+            }
+
+            else if (byteCode[linePtr] == HASHOP_EXECOP) {
+                linePtr++;
+                //next byte is source  (hard coded to temp)
+                linePtr++;
+
+                uint sum = 0;
+                for (int j = 0; j < 8; j++)
+                    sum += myHashResult[j];
+
+                if (sum % 3 == 0) {
+                    for (int i = 0; i < 8; i++)
+                        myHashResult[i] += tempStore[i];
+                }
+
+                else if (sum % 3 == 1) {
+                    for (int i = 0; i < 8; i++)
+                        myHashResult[i] ^= tempStore[i];
+                }
+
+                else if (sum % 3 == 2) {
+                    sha256(32, myHashResult, myHashResult);
+                }
+
+            }
 
 
-        if (c > target) {
-            
-            
-            __global unsigned char* ptr = &myHeader;
+            else if (byteCode[linePtr] == HASHOP_END) {
+                break;
+            }
 
-            printf("Header %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-                ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5], ptr[6], ptr[7], ptr[8], ptr[9],
-                ptr[10], ptr[11], ptr[12], ptr[13], ptr[14], ptr[15], ptr[16], ptr[17], ptr[18], ptr[19],
-                ptr[20], ptr[21], ptr[22], ptr[23], ptr[24], ptr[25], ptr[26], ptr[27], ptr[28], ptr[29],
-                ptr[30], ptr[31], ptr[32], ptr[33], ptr[34], ptr[35], ptr[36], ptr[37], ptr[38], ptr[39],
-                ptr[40], ptr[41], ptr[42], ptr[43], ptr[44], ptr[45], ptr[46], ptr[47], ptr[48], ptr[49],
-                ptr[50], ptr[51], ptr[52], ptr[53], ptr[54], ptr[55], ptr[56], ptr[57], ptr[58], ptr[59],
-                ptr[60], ptr[61], ptr[62], ptr[63], ptr[64], ptr[65], ptr[66], ptr[67], ptr[68], ptr[69],
-                ptr[70], ptr[71], ptr[72], ptr[73], ptr[74], ptr[75], ptr[76], ptr[77], ptr[78], ptr[79]
-                );
-                
-
-            printf("GPU HASH %08X%08X%08X%08X%08X%08X%08X%08X",
-                myHashResult[0],
-                myHashResult[1],
-                myHashResult[2],
-                myHashResult[3],
-                myHashResult[4],
-                myHashResult[5],
-                myHashResult[6],
-                myHashResult[7]
-            );
-            
-
-            NonceRetBuf[atomic_inc(NonceRetBuf + 0xFF)] = nonce;
-            break;
-        }
-        */
-        
-        ulong res = as_ulong(as_uchar8(((ulong *)myHashResult)[0]).s76543210);
-		if(res <= target)
-		{
-
-            /*
-            printf("GPU HASH %08X%08X%08X%08X%08X%08X%08X%08X",
-                myHashResult[0],
-                myHashResult[1],
-                myHashResult[2],
-                myHashResult[3],
-                myHashResult[4],
-                myHashResult[5],
-                myHashResult[6],
-                myHashResult[7]
-                );
-              */
-
-			NonceRetBuf[atomic_inc(NonceRetBuf + 0xFF)] = nonce;
-			//break;	// we are solo mining, any other solutions will go to waste anyhow
-		}
-        
+    }
 		
-       // hashCount++;
-      //  nonce++;
-      //  myHeader[19] = nonce;
-	//}
+        
+    ulong res = as_ulong(as_uchar8(((ulong *)myHashResult)[0]).s76543210);
+	if(res <= target)
+	{
+
+        
+        ///DEBUG        
+        /*
+        printf("GPU HASH %08X%08X%08X%08X%08X%08X%08X%08X",
+            myHashResult[0],
+            myHashResult[1],
+            myHashResult[2],
+            myHashResult[3],
+            myHashResult[4],
+            myHashResult[5],
+            myHashResult[6],
+            myHashResult[7]
+            );
+            */
+        ///DEBUG        
+            
+
+		NonceRetBuf[atomic_inc(NonceRetBuf + 0xFF)] = nonce;
+	}
 
 }
