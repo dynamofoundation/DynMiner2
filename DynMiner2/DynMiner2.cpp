@@ -143,13 +143,6 @@ void parseCommandArgs(int argc, char* argv[]) {
 
     rpcConfigParams.hiveos = 0;
 
-    /*
-    if (commandArgs.find("-file") != commandArgs.end()) {
-
-    }
-    */
-
-
     if (commandArgs.find("-mode") == commandArgs.end())
         showUsage("Missing argument: mode");
     else {
